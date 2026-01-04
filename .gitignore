@@ -1,0 +1,46 @@
+# Root level gitignore
+
+# Dependencies
+**/node_modules/
+**/package-lock.json
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Logs
+**/logs/*.log
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+**/build/
+
+# Uploads contents (keep structure)
+**/uploads/**
+!**/uploads/.gitkeep
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Flutter specific
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/pubspec.lock
+**/*.iml
+
