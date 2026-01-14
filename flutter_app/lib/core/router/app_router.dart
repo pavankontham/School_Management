@@ -7,26 +7,39 @@ import '../services/storage_service.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_school_screen.dart';
 import '../../features/auth/presentation/screens/student_login_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/principal/presentation/screens/principal_dashboard_screen.dart';
 import '../../features/principal/presentation/screens/teacher_management_screen.dart';
 import '../../features/principal/presentation/screens/add_teacher_screen.dart';
+import '../../features/principal/presentation/screens/teacher_detail_screen.dart';
+import '../../features/principal/presentation/screens/edit_teacher_screen.dart';
 import '../../features/principal/presentation/screens/student_management_screen.dart';
 import '../../features/principal/presentation/screens/add_student_screen.dart';
+import '../../features/principal/presentation/screens/student_detail_screen.dart';
+import '../../features/principal/presentation/screens/edit_student_screen.dart';
 import '../../features/principal/presentation/screens/class_management_screen.dart';
+import '../../features/principal/presentation/screens/class_detail_screen.dart';
 import '../../features/principal/presentation/screens/subject_management_screen.dart';
 import '../../features/principal/presentation/screens/notification_screen.dart';
 import '../../features/principal/presentation/screens/dashboard_posts_screen.dart';
+import '../../features/principal/presentation/screens/create_post_screen.dart';
+import '../../features/principal/presentation/screens/post_detail_screen.dart';
+import '../../features/principal/presentation/screens/school_info_screen.dart';
 import '../../features/teacher/presentation/screens/teacher_dashboard_screen.dart';
 import '../../features/teacher/presentation/screens/attendance_screen.dart';
 import '../../features/teacher/presentation/screens/marks_screen.dart';
 import '../../features/teacher/presentation/screens/quiz_management_screen.dart';
 import '../../features/teacher/presentation/screens/textbook_screen.dart';
 import '../../features/teacher/presentation/screens/teacher_chat_screen.dart';
+import '../../features/teacher/presentation/screens/face_recognition_attendance_screen.dart';
+import '../../features/teacher/presentation/screens/quiz_generate_screen.dart';
+import '../../features/teacher/presentation/screens/attendance_history_screen.dart';
 import '../../features/student/presentation/screens/student_dashboard_screen.dart';
 import '../../features/student/presentation/screens/student_attendance_screen.dart';
 import '../../features/student/presentation/screens/student_marks_screen.dart';
 import '../../features/student/presentation/screens/student_quiz_screen.dart';
+import '../../features/student/presentation/screens/student_quiz_attempt_screen.dart';
 import '../../features/student/presentation/screens/student_textbook_screen.dart';
 import '../../features/student/presentation/screens/student_chat_screen.dart';
 import '../../features/common/presentation/screens/profile_screen.dart';
@@ -43,12 +56,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/student-login' ||
           state.matchedLocation == '/';
-      
+
       // If not logged in and not on auth route, redirect to splash
       if (!isLoggedIn && !isAuthRoute) {
         return '/';
       }
-      
+
       // If logged in and on auth route, redirect to appropriate dashboard
       if (isLoggedIn && isAuthRoute && state.matchedLocation != '/') {
         switch (userType) {
@@ -62,7 +75,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             return '/';
         }
       }
-      
+
       return null;
     },
     routes: [
@@ -71,7 +84,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/',
         builder: (context, state) => const SplashScreen(),
       ),
-      
+
       // Auth Routes
       GoRoute(
         path: '/login',
@@ -85,7 +98,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/student-login',
         builder: (context, state) => const StudentLoginScreen(),
       ),
-      
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
       // Principal Routes
       ShellRoute(
         builder: (context, state, child) => PrincipalShell(child: child),
@@ -102,6 +119,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'add',
                     builder: (context, state) => const AddTeacherScreen(),
                   ),
+                  GoRoute(
+                    path: ':teacherId',
+                    builder: (context, state) {
+                      final teacherId = state.pathParameters['teacherId']!;
+                      return TeacherDetailScreen(teacherId: teacherId);
+                    },
+                    routes: [
+                      GoRoute(
+                        path: 'edit',
+                        builder: (context, state) {
+                          final teacherId = state.pathParameters['teacherId']!;
+                          return EditTeacherScreen(teacherId: teacherId);
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
               GoRoute(
@@ -112,6 +145,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'add',
                     builder: (context, state) => const AddStudentScreen(),
                   ),
+                  GoRoute(
+                    path: ':studentId',
+                    builder: (context, state) {
+                      final studentId = state.pathParameters['studentId']!;
+                      return StudentDetailScreen(studentId: studentId);
+                    },
+                    routes: [
+                      GoRoute(
+                        path: 'edit',
+                        builder: (context, state) {
+                          final studentId = state.pathParameters['studentId']!;
+                          return EditStudentScreen(studentId: studentId);
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
               GoRoute(
@@ -119,39 +168,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const ClassManagementScreen(),
                 routes: [
                   GoRoute(
-                    path: ':classId/subjects',
+                    path: ':classId',
                     builder: (context, state) {
                       final classId = state.pathParameters['classId']!;
-                      return SubjectManagementScreen(classId: classId);
+                      return ClassDetailScreen(classId: classId);
                     },
+                    routes: [
+                      GoRoute(
+                        path: 'subjects',
+                        builder: (context, state) {
+                          final classId = state.pathParameters['classId']!;
+                          return SubjectManagementScreen(classId: classId);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
               GoRoute(
                 path: 'notifications',
                 builder: (context, state) => const NotificationScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'create',
+                    builder: (context, state) => const NotificationScreen(),
+                  ),
+                ],
               ),
               GoRoute(
                 path: 'posts',
                 builder: (context, state) => const DashboardPostsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'create',
+                    builder: (context, state) => const CreatePostScreen(),
+                  ),
+                  GoRoute(
+                    path: ':postId',
+                    builder: (context, state) {
+                      final postId = state.pathParameters['postId']!;
+                      return PostDetailScreen(postId: postId);
+                    },
+                  ),
+                ],
               ),
-              GoRoute(
-                path: 'profile',
-                builder: (context, state) => const ProfileScreen(),
-              ),
-            ],
-          ),
-        ],
-      ),
-      
-      // Teacher Routes
-      ShellRoute(
-        builder: (context, state, child) => TeacherShell(child: child),
-        routes: [
-          GoRoute(
-            path: '/teacher',
-            builder: (context, state) => const TeacherDashboardScreen(),
-            routes: [
               GoRoute(
                 path: 'attendance',
                 builder: (context, state) => const AttendanceScreen(),
@@ -173,6 +233,70 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const TeacherChatScreen(),
               ),
               GoRoute(
+                path: 'profile',
+                builder: (context, state) => const ProfileScreen(),
+              ),
+              GoRoute(
+                path: 'school',
+                builder: (context, state) => const SchoolInfoScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      // Teacher Routes
+      ShellRoute(
+        builder: (context, state, child) => TeacherShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/teacher',
+            builder: (context, state) => const TeacherDashboardScreen(),
+            routes: [
+              GoRoute(
+                path: 'attendance',
+                builder: (context, state) => const AttendanceScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'camera',
+                    builder: (context, state) =>
+                        const FaceRecognitionAttendanceScreen(),
+                  ),
+                  GoRoute(
+                    path: 'history',
+                    builder: (context, state) =>
+                        const AttendanceHistoryScreen(),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'marks',
+                builder: (context, state) => const MarksScreen(),
+              ),
+              GoRoute(
+                path: 'quizzes',
+                builder: (context, state) => const QuizManagementScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'create',
+                    builder: (context, state) =>
+                        const QuizManagementScreen(), // Opens create dialog
+                  ),
+                  GoRoute(
+                    path: 'generate',
+                    builder: (context, state) => const QuizGenerateScreen(),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'textbooks',
+                builder: (context, state) => const TextbookScreen(),
+              ),
+              GoRoute(
+                path: 'chat',
+                builder: (context, state) => const TeacherChatScreen(),
+              ),
+              GoRoute(
                 path: 'notifications',
                 builder: (context, state) => const NotificationsScreen(),
               ),
@@ -184,7 +308,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      
+
       // Student Routes
       ShellRoute(
         builder: (context, state, child) => StudentShell(child: child),
@@ -204,6 +328,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'quizzes',
                 builder: (context, state) => const StudentQuizScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':quizId/attempt',
+                    builder: (context, state) {
+                      final quizId = state.pathParameters['quizId']!;
+                      return StudentQuizAttemptScreen(quizId: quizId);
+                    },
+                  ),
+                ],
               ),
               GoRoute(
                 path: 'textbooks',
@@ -258,4 +391,3 @@ class StudentShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => child;
 }
-

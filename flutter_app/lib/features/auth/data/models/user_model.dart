@@ -13,7 +13,7 @@ class UserModel extends Equatable {
   final bool isActive;
   final DateTime createdAt;
   final SchoolModel? school;
-  
+
   const UserModel({
     required this.id,
     required this.schoolId,
@@ -27,30 +27,31 @@ class UserModel extends Equatable {
     required this.createdAt,
     this.school,
   });
-  
+
   String get fullName => '$firstName $lastName';
-  
+
   bool get isPrincipal => role == 'PRINCIPAL';
   bool get isTeacher => role == 'TEACHER';
-  
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'],
-      schoolId: json['schoolId'] ?? json['school']?['id'],
-      email: json['email'],
-      firstName: json['firstName'],
-      lastName: json['lastName'],
-      role: json['role'],
+      id: json['id'] ?? '',
+      schoolId: json['schoolId'] ?? json['school']?['id'] ?? '',
+      email: json['email'] ?? '',
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      role: json['role'] ?? 'TEACHER',
       phone: json['phone'],
       photo: json['photo'],
       isActive: json['isActive'] ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      school: json['school'] != null ? SchoolModel.fromJson(json['school']) : null,
+      school:
+          json['school'] != null ? SchoolModel.fromJson(json['school']) : null,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -66,7 +67,7 @@ class UserModel extends Equatable {
       'school': school?.toJson(),
     };
   }
-  
+
   @override
   List<Object?> get props => [id, schoolId, email, firstName, lastName, role];
 }
@@ -91,7 +92,7 @@ class StudentModel extends Equatable {
   final DateTime createdAt;
   final ClassModel? studentClass;
   final SchoolModel? school;
-  
+
   const StudentModel({
     required this.id,
     required this.schoolId,
@@ -112,9 +113,9 @@ class StudentModel extends Equatable {
     this.studentClass,
     this.school,
   });
-  
+
   String get fullName => '$firstName $lastName';
-  
+
   factory StudentModel.fromJson(Map<String, dynamic> json) {
     return StudentModel(
       id: json['id'],
@@ -137,11 +138,13 @@ class StudentModel extends Equatable {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      studentClass: json['class'] != null ? ClassModel.fromJson(json['class']) : null,
-      school: json['school'] != null ? SchoolModel.fromJson(json['school']) : null,
+      studentClass:
+          json['class'] != null ? ClassModel.fromJson(json['class']) : null,
+      school:
+          json['school'] != null ? SchoolModel.fromJson(json['school']) : null,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -162,9 +165,10 @@ class StudentModel extends Equatable {
       'createdAt': createdAt.toIso8601String(),
     };
   }
-  
+
   @override
-  List<Object?> get props => [id, schoolId, classId, rollNumber, firstName, lastName];
+  List<Object?> get props =>
+      [id, schoolId, classId, rollNumber, firstName, lastName];
 }
 
 /// School model
@@ -178,7 +182,7 @@ class SchoolModel extends Equatable {
   final String? website;
   final bool isActive;
   final DateTime createdAt;
-  
+
   const SchoolModel({
     required this.id,
     required this.name,
@@ -190,7 +194,7 @@ class SchoolModel extends Equatable {
     required this.isActive,
     required this.createdAt,
   });
-  
+
   factory SchoolModel.fromJson(Map<String, dynamic> json) {
     return SchoolModel(
       id: json['id'] ?? '',
@@ -206,7 +210,7 @@ class SchoolModel extends Equatable {
           : DateTime.now(),
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -220,7 +224,7 @@ class SchoolModel extends Equatable {
       'createdAt': createdAt.toIso8601String(),
     };
   }
-  
+
   @override
   List<Object?> get props => [id, name];
 }
@@ -232,7 +236,7 @@ class ClassModel extends Equatable {
   final String? section;
   final String grade;
   final bool isActive;
-  
+
   const ClassModel({
     required this.id,
     required this.name,
@@ -240,9 +244,9 @@ class ClassModel extends Equatable {
     required this.grade,
     required this.isActive,
   });
-  
+
   String get displayName => section != null ? '$name - $section' : name;
-  
+
   factory ClassModel.fromJson(Map<String, dynamic> json) {
     return ClassModel(
       id: json['id'] ?? '',
@@ -252,7 +256,7 @@ class ClassModel extends Equatable {
       isActive: json['isActive'] ?? true,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -262,8 +266,7 @@ class ClassModel extends Equatable {
       'isActive': isActive,
     };
   }
-  
+
   @override
   List<Object?> get props => [id, name, section, grade];
 }
-

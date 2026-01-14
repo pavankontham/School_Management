@@ -36,6 +36,9 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
     super.dispose();
   }
 
+  List<String> _selectedClassIds = [];
+  List<String> _selectedSubjectIds = [];
+
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -46,13 +49,18 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
       return;
     }
 
-    final success = await ref.read(teacherManagementProvider.notifier).createTeacher(
-      firstName: _firstNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-    );
+    final success =
+        await ref.read(teacherManagementProvider.notifier).createTeacher(
+              firstName: _firstNameController.text.trim(),
+              lastName: _lastNameController.text.trim(),
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+              phone: _phoneController.text.trim().isEmpty
+                  ? null
+                  : _phoneController.text.trim(),
+              classIds: _selectedClassIds,
+              subjectIds: _selectedSubjectIds,
+            );
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -65,6 +73,8 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(teacherManagementProvider);
+    final classesAsync = ref.watch(classesProvider(null));
+    final subjectsAsync = ref.watch(subjectsProvider(null));
 
     return Scaffold(
       appBar: AppBar(
@@ -87,12 +97,14 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+                      const Icon(Icons.error_outline,
+                          color: AppColors.error, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           state.error!,
-                          style: const TextStyle(color: AppColors.error, fontSize: 14),
+                          style: const TextStyle(
+                              color: AppColors.error, fontSize: 14),
                         ),
                       ),
                     ],
@@ -140,7 +152,8 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) {
                   if (v?.isEmpty ?? true) return 'Required';
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v!)) {
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                      .hasMatch(v!)) {
                     return 'Invalid email';
                   }
                   return null;
@@ -173,8 +186,11 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
                 prefixIcon: Icons.lock_outline,
                 obscureText: _obscurePassword,
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
                 validator: (v) {
                   if (v?.isEmpty ?? true) return 'Required';
@@ -192,14 +208,93 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
                 prefixIcon: Icons.lock_outline,
                 obscureText: _obscureConfirmPassword,
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                  icon: Icon(_obscureConfirmPassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
                 ),
                 validator: (v) {
                   if (v?.isEmpty ?? true) return 'Required';
-                  if (v != _passwordController.text) return 'Passwords do not match';
+                  if (v != _passwordController.text)
+                    return 'Passwords do not match';
                   return null;
                 },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Assignments Section
+              const Text(
+                'Assignments',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+
+              const Text(
+                'Classes',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              classesAsync.when(
+                data: (classes) => classes.isEmpty
+                    ? const Text('No classes found. Create classes first.')
+                    : Wrap(
+                        spacing: 8,
+                        children: classes.map((cls) {
+                          final isSelected = _selectedClassIds.contains(cls.id);
+                          return FilterChip(
+                            label: Text(cls.displayName),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedClassIds.add(cls.id);
+                                } else {
+                                  _selectedClassIds.remove(cls.id);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Text('Error: $e'),
+              ),
+
+              const SizedBox(height: 16),
+
+              const Text(
+                'Subjects',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              subjectsAsync.when(
+                data: (subjects) => subjects.isEmpty
+                    ? const Text('No subjects found. Create subjects first.')
+                    : Wrap(
+                        spacing: 8,
+                        children: subjects.map((sub) {
+                          final isSelected =
+                              _selectedSubjectIds.contains(sub.id);
+                          return FilterChip(
+                            label:
+                                Text('${sub.name} (${sub.className ?? "N/A"})'),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedSubjectIds.add(sub.id);
+                                } else {
+                                  _selectedSubjectIds.remove(sub.id);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Text('Error: $e'),
               ),
 
               const SizedBox(height: 32),
@@ -216,4 +311,3 @@ class _AddTeacherScreenState extends ConsumerState<AddTeacherScreen> {
     );
   }
 }
-

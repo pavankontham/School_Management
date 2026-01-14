@@ -7,16 +7,16 @@ class AppConfig {
   static const String appVersion = '1.0.0';
 
   // API Configuration
-  // Production backend URL on Render
+  // Local backend URL (change to your local IP when testing on physical device)
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://school-management-api-fxxl.onrender.com/api/v1',
+    defaultValue: 'http://localhost:3000/api/v1',
   );
 
   // Face recognition service (deploy separately if needed)
   static const String faceRecognitionUrl = String.fromEnvironment(
     'FACE_RECOGNITION_URL',
-    defaultValue: 'https://school-management-api-fxxl.onrender.com',
+    defaultValue: 'http://localhost:3000',
   );
 
   // Timeouts

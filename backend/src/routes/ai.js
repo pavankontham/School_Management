@@ -17,7 +17,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 async function generateQuizQuestions(topic, subject, grade, count, questionType) {
   const maxRetries = 3;
-  
+
   const prompt = `Generate ${count} ${questionType} questions about "${topic}" for ${subject} subject, suitable for grade ${grade} students.
 
 For each question, provide:
@@ -41,8 +41,8 @@ Make questions educational, clear, and age-appropriate. Vary difficulty levels.`
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
       const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
@@ -53,7 +53,7 @@ Make questions educational, clear, and age-appropriate. Vary difficulty levels.`
 
       const response = await result.response;
       const text = response.text();
-      
+
       // Extract JSON from response
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
@@ -64,7 +64,7 @@ Make questions educational, clear, and age-appropriate. Vary difficulty levels.`
       return questions;
     } catch (error) {
       logger.error(`AI quiz generation attempt ${attempt} failed:`, error);
-      
+
       if (attempt < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
@@ -210,8 +210,8 @@ Structure your response with:
 Keep the explanation educational and engaging.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -265,8 +265,8 @@ Include:
 Format the response in a clear, structured way that a teacher can easily follow.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -317,8 +317,8 @@ Include:
 Make the tips practical and actionable.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {

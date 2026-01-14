@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/teacher_model.dart';
+import '../../data/models/dashboard_models.dart';
+import '../../data/models/school_model.dart';
 import '../../data/repositories/principal_repository.dart';
 
 // Dashboard Stats Provider
@@ -8,26 +12,109 @@ final dashboardStatsProvider = FutureProvider<DashboardStats?>((ref) async {
   return ref.read(principalRepositoryProvider).getDashboardStats();
 });
 
+final dashboardPostsProvider =
+    FutureProvider.family<List<DashboardPostModel>, String?>((ref, type) async {
+  return ref.read(principalRepositoryProvider).getDashboardPosts(type: type);
+});
+
+final schoolInfoProvider = FutureProvider<SchoolModel?>((ref) async {
+  return ref.read(principalRepositoryProvider).getSchoolInfo();
+});
+
+final postManagementProvider =
+    StateNotifierProvider<PostManagementNotifier, TeacherManagementState>(
+        (ref) {
+  return PostManagementNotifier(ref.read(principalRepositoryProvider), ref);
+});
+
+class PostManagementNotifier extends StateNotifier<TeacherManagementState> {
+  final PrincipalRepository _repository;
+  final Ref _ref;
+
+  PostManagementNotifier(this._repository, this._ref)
+      : super(const TeacherManagementState());
+
+  Future<bool> createPost({
+    required String title,
+    required String content,
+    required String type,
+    bool isPinned = false,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    final result = await _repository.createDashboardPost(
+      title: title,
+      content: content,
+      type: type,
+      isPinned: isPinned,
+    );
+
+    if (result.success) {
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      _ref.invalidate(dashboardPostsProvider);
+      _ref.invalidate(dashboardStatsProvider);
+      return true;
+    }
+
+    state = state.copyWith(isLoading: false, error: result.error);
+    return false;
+  }
+
+  Future<bool> updatePost(
+    String id, {
+    String? title,
+    String? content,
+    String? type,
+    bool? isPinned,
+    bool? isPublished,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    final result = await _repository.updateDashboardPost(
+      id,
+      title: title,
+      content: content,
+      type: type,
+      isPinned: isPinned,
+      isPublished: isPublished,
+    );
+
+    if (result.success) {
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      _ref.invalidate(dashboardPostsProvider);
+      return true;
+    }
+
+    state = state.copyWith(isLoading: false, error: result.error);
+    return false;
+  }
+}
+
 // Teachers Providers
-final teachersProvider = FutureProvider.family<List<TeacherModel>, String?>((ref, search) async {
+final teachersProvider =
+    FutureProvider.family<List<TeacherModel>, String?>((ref, search) async {
   return ref.read(principalRepositoryProvider).getTeachers(search: search);
 });
 
-final teacherProvider = FutureProvider.family<TeacherModel?, String>((ref, id) async {
+final teacherProvider =
+    FutureProvider.family<TeacherModel?, String>((ref, id) async {
   return ref.read(principalRepositoryProvider).getTeacher(id);
 });
 
 // Classes Providers
-final classesProvider = FutureProvider.family<List<ClassModel>, String?>((ref, search) async {
+final classesProvider =
+    FutureProvider.family<List<ClassModel>, String?>((ref, search) async {
   return ref.read(principalRepositoryProvider).getClasses(search: search);
 });
 
-final classProvider = FutureProvider.family<ClassModel?, String>((ref, id) async {
+final classProvider =
+    FutureProvider.family<ClassModel?, String>((ref, id) async {
   return ref.read(principalRepositoryProvider).getClass(id);
 });
 
 // Subjects Providers
-final subjectsProvider = FutureProvider.family<List<SubjectModel>, String?>((ref, classId) async {
+final subjectsProvider =
+    FutureProvider.family<List<SubjectModel>, String?>((ref, classId) async {
   return ref.read(principalRepositoryProvider).getSubjects(classId: classId);
 });
 
@@ -50,14 +137,17 @@ class StudentFilter {
   int get hashCode => classId.hashCode ^ search.hashCode;
 }
 
-final studentsProvider = FutureProvider.family<List<StudentDetailModel>, StudentFilter>((ref, filter) async {
+final studentsProvider =
+    FutureProvider.family<List<StudentDetailModel>, StudentFilter>(
+        (ref, filter) async {
   return ref.read(principalRepositoryProvider).getStudents(
-    classId: filter.classId,
-    search: filter.search,
-  );
+        classId: filter.classId,
+        search: filter.search,
+      );
 });
 
-final studentProvider = FutureProvider.family<StudentDetailModel?, String>((ref, id) async {
+final studentProvider =
+    FutureProvider.family<StudentDetailModel?, String>((ref, id) async {
   return ref.read(principalRepositoryProvider).getStudent(id);
 });
 
@@ -99,6 +189,8 @@ class TeacherManagementNotifier extends StateNotifier<TeacherManagementState> {
     required String email,
     required String password,
     String? phone,
+    List<String>? classIds,
+    List<String>? subjectIds,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
 
@@ -108,6 +200,8 @@ class TeacherManagementNotifier extends StateNotifier<TeacherManagementState> {
       email: email,
       password: password,
       phone: phone,
+      classIds: classIds,
+      subjectIds: subjectIds,
     );
 
     if (result.success) {
@@ -295,6 +389,7 @@ class StudentManagementNotifier extends StateNotifier<TeacherManagementState> {
     String? address,
     DateTime? dateOfBirth,
     String? gender,
+    File? facePhoto,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
 
@@ -314,7 +409,16 @@ class StudentManagementNotifier extends StateNotifier<TeacherManagementState> {
       gender: gender,
     );
 
-    if (result.success) {
+    if (result.success && result.data != null) {
+      // Upload face photo if provided
+      if (facePhoto != null) {
+        final studentId = result.data!.id;
+        await _repository.uploadStudentFacePhoto(
+          studentId: studentId,
+          photo: facePhoto,
+        );
+      }
+
       state = state.copyWith(isLoading: false, isSuccess: true);
       _ref.invalidate(studentsProvider);
       _ref.invalidate(dashboardStatsProvider);
@@ -407,18 +511,21 @@ final subjectManagementProvider =
 class SubjectManagementNotifier extends StateNotifier<TeacherManagementState> {
   final PrincipalRepository _repository;
 
-  SubjectManagementNotifier(this._repository) : super(const TeacherManagementState());
+  SubjectManagementNotifier(this._repository)
+      : super(const TeacherManagementState());
 
   Future<bool> createSubject({
     required String name,
     required String code,
     String? description,
+    String? classId,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     final result = await _repository.createSubject(
       name: name,
       code: code,
       description: description,
+      classId: classId,
     );
     if (result.success) {
       state = state.copyWith(isLoading: false);
@@ -428,9 +535,11 @@ class SubjectManagementNotifier extends StateNotifier<TeacherManagementState> {
     return false;
   }
 
-  Future<bool> updateSubject(String id, {String? name, String? description, String? teacherId}) async {
+  Future<bool> updateSubject(String id,
+      {String? name, String? description, String? teacherId}) async {
     state = state.copyWith(isLoading: true, error: null);
-    final result = await _repository.updateSubject(id, name: name, description: description, teacherId: teacherId);
+    final result = await _repository.updateSubject(id,
+        name: name, description: description, teacherId: teacherId);
     if (result.success) {
       state = state.copyWith(isLoading: false);
       return true;
@@ -444,6 +553,23 @@ class SubjectManagementNotifier extends StateNotifier<TeacherManagementState> {
     final result = await _repository.deleteSubject(id);
     if (result.success) {
       state = state.copyWith(isLoading: false);
+      return true;
+    }
+    state = state.copyWith(isLoading: false, error: result.error);
+    return false;
+  }
+
+  Future<bool> assignTeacher({
+    required String subjectId,
+    String? teacherId,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    final result = await _repository.assignTeacherToSubject(
+      subjectId: subjectId,
+      teacherId: teacherId,
+    );
+    if (result.success) {
+      state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     }
     state = state.copyWith(isLoading: false, error: result.error);

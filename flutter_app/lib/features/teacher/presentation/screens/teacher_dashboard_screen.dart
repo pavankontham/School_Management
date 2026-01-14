@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../common/presentation/widgets/app_widgets.dart';
 import '../providers/teacher_providers.dart';
+import '../../../common/presentation/widgets/notification_icon_button.dart';
 
 class TeacherDashboardScreen extends ConsumerWidget {
   const TeacherDashboardScreen({super.key});
@@ -32,13 +33,21 @@ class TeacherDashboardScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.push('/teacher/notifications'),
+          NotificationIconButton(
+            onTap: () => context.push('/teacher/notifications'),
           ),
           PopupMenuButton<String>(
             icon: UserAvatar(name: user?.fullName ?? 'T', size: 36),
             itemBuilder: (context) => [
+              if (user?.role == 'PRINCIPAL')
+                const PopupMenuItem<String>(
+                  value: 'principal_dashboard',
+                  child: ListTile(
+                    leading: Icon(Icons.dashboard),
+                    title: Text('Principal Dashboard'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
               const PopupMenuItem<String>(
                 value: 'profile',
                 child: ListTile(
@@ -52,13 +61,17 @@ class TeacherDashboardScreen extends ConsumerWidget {
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: AppColors.error),
-                  title: Text('Logout', style: TextStyle(color: AppColors.error)),
+                  title:
+                      Text('Logout', style: TextStyle(color: AppColors.error)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
             ],
             onSelected: (value) async {
               switch (value) {
+                case 'principal_dashboard':
+                  context.go('/principal');
+                  break;
                 case 'profile':
                   context.push('/teacher/profile');
                   break;
@@ -97,7 +110,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
               SectionHeader(
                 title: 'My Classes',
                 actionLabel: 'View All',
-                onAction: () {},
+                onAction: () => context.push('/teacher/attendance'),
               ),
               const SizedBox(height: 8),
               classesAsync.when(
@@ -120,7 +133,8 @@ class TeacherDashboardScreen extends ConsumerWidget {
                             return _ClassCard(
                               name: cls.displayName,
                               studentCount: cls.studentCount,
-                              onTap: () {},
+                              onTap: () =>
+                                  context.push('/principal/classes/${cls.id}'),
                             );
                           },
                         ),
@@ -135,7 +149,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
               SectionHeader(
                 title: 'My Subjects',
                 actionLabel: 'View All',
-                onAction: () {},
+                onAction: () => context.push('/teacher/textbooks'),
               ),
               const SizedBox(height: 8),
               subjectsAsync.when(
@@ -157,7 +171,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
                           return _SubjectTile(
                             name: subject.name,
                             className: subject.className ?? '',
-                            onTap: () {},
+                            onTap: () => context.push('/teacher/textbooks'),
                           );
                         },
                       ),
@@ -167,8 +181,8 @@ class TeacherDashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // Today's Schedule (Placeholder)
-              const SectionHeader(title: "Today's Tasks"),
+              // Quick Navigation
+              const SectionHeader(title: "Quick Navigation"),
               const SizedBox(height: 8),
               Card(
                 child: Padding(
@@ -276,7 +290,8 @@ class _QuickActionCard extends StatelessWidget {
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -323,7 +338,8 @@ class _ClassCard extends StatelessWidget {
                   ),
                   Text(
                     '$studentCount students',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -388,10 +404,10 @@ class _TaskItem extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: AppColors.primary),
       title: Text(title),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+      subtitle: Text(subtitle,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
   }
 }
-

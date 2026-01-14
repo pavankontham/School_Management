@@ -11,7 +11,8 @@ class RegisterSchoolScreen extends ConsumerStatefulWidget {
   const RegisterSchoolScreen({super.key});
 
   @override
-  ConsumerState<RegisterSchoolScreen> createState() => _RegisterSchoolScreenState();
+  ConsumerState<RegisterSchoolScreen> createState() =>
+      _RegisterSchoolScreenState();
 }
 
 class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
@@ -74,7 +75,8 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
           _schoolPhoneController.text.isEmpty ||
           _schoolEmailController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill all required school information')),
+          const SnackBar(
+              content: Text('Please fill all required school information')),
         );
         return;
       }
@@ -104,21 +106,25 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
     }
 
     final success = await ref.read(authProvider.notifier).registerSchool(
-      schoolName: _schoolNameController.text.trim(),
-      address: _addressController.text.trim(),
-      city: _cityController.text.trim(),
-      state: _stateController.text.trim(),
-      country: _countryController.text.trim(),
-      postalCode: _postalCodeController.text.trim(),
-      schoolPhone: _schoolPhoneController.text.trim(),
-      schoolEmail: _schoolEmailController.text.trim(),
-      website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
-      firstName: _firstNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-    );
+          schoolName: _schoolNameController.text.trim(),
+          address: _addressController.text.trim(),
+          city: _cityController.text.trim(),
+          state: _stateController.text.trim(),
+          country: _countryController.text.trim(),
+          postalCode: _postalCodeController.text.trim(),
+          schoolPhone: _schoolPhoneController.text.trim(),
+          schoolEmail: _schoolEmailController.text.trim(),
+          website: _websiteController.text.trim().isEmpty
+              ? null
+              : _websiteController.text.trim(),
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          phone: _phoneController.text.trim().isEmpty
+              ? null
+              : _phoneController.text.trim(),
+        );
 
     if (success && mounted) {
       context.go('/principal');
@@ -150,14 +156,16 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
                   Expanded(
                     child: Container(
                       height: 2,
-                      color: _currentPage >= 1 ? AppColors.primary : AppColors.border,
+                      color: _currentPage >= 1
+                          ? AppColors.primary
+                          : AppColors.border,
                     ),
                   ),
                   _buildStepIndicator(1, 'Principal Info'),
                 ],
               ),
             ),
-            
+
             // Error message
             if (authState.error != null)
               Container(
@@ -169,18 +177,20 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+                    const Icon(Icons.error_outline,
+                        color: AppColors.error, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         authState.error!,
-                        style: const TextStyle(color: AppColors.error, fontSize: 14),
+                        style: const TextStyle(
+                            color: AppColors.error, fontSize: 14),
                       ),
                     ),
                   ],
                 ),
               ),
-            
+
             // Page view
             Expanded(
               child: PageView(
@@ -193,7 +203,7 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
                 ],
               ),
             ),
-            
+
             // Navigation buttons
             Container(
               padding: const EdgeInsets.all(24),
@@ -275,7 +285,7 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Enter your school details',
             style: TextStyle(color: AppColors.textSecondary),
           ),
@@ -382,7 +392,7 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Create your principal account',
             style: TextStyle(color: AppColors.textSecondary),
           ),
@@ -439,8 +449,10 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
             prefixIcon: Icons.lock_outline,
             obscureText: _obscurePassword,
             suffixIcon: IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
             validator: (v) {
               if (v?.isEmpty ?? true) return 'Required';
@@ -456,12 +468,16 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
             prefixIcon: Icons.lock_outline,
             obscureText: _obscureConfirmPassword,
             suffixIcon: IconButton(
-              icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility),
-              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+              icon: Icon(_obscureConfirmPassword
+                  ? Icons.visibility_off
+                  : Icons.visibility),
+              onPressed: () => setState(
+                  () => _obscureConfirmPassword = !_obscureConfirmPassword),
             ),
             validator: (v) {
               if (v?.isEmpty ?? true) return 'Required';
-              if (v != _passwordController.text) return 'Passwords do not match';
+              if (v != _passwordController.text)
+                return 'Passwords do not match';
               return null;
             },
           ),
@@ -470,4 +486,3 @@ class _RegisterSchoolScreenState extends ConsumerState<RegisterSchoolScreen> {
     );
   }
 }
-

@@ -43,14 +43,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           ),
           PopupMenuButton(
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all_present', child: Text('Mark All Present')),
-              const PopupMenuItem(value: 'all_absent', child: Text('Mark All Absent')),
-              const PopupMenuItem(value: 'history', child: Text('View History')),
+              const PopupMenuItem(
+                  value: 'all_present', child: Text('Mark All Present')),
+              const PopupMenuItem(
+                  value: 'all_absent', child: Text('Mark All Absent')),
+              const PopupMenuItem(
+                  value: 'history', child: Text('View History')),
             ],
             onSelected: (value) {
               switch (value) {
                 case 'all_present':
-                  ref.read(attendanceNotifierProvider.notifier).markAllPresent();
+                  ref
+                      .read(attendanceNotifierProvider.notifier)
+                      .markAllPresent();
                   break;
                 case 'all_absent':
                   ref.read(attendanceNotifierProvider.notifier).markAllAbsent();
@@ -86,24 +91,34 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   children: [
                     Expanded(
                       child: classesAsync.when(
-                        data: (classes) => CustomDropdownField<String>(
-                          label: 'Class',
-                          hint: 'Select class',
-                          value: _selectedClassId,
-                          items: classes
-                              .map((c) => DropdownMenuItem(
-                                    value: c.id,
-                                    child: Text(c.displayName),
-                                  ))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedClassId = value;
-                              _selectedSubjectId = null;
-                              _isInitialized = false;
+                        data: (classes) {
+                          if (classes.length == 1 && _selectedClassId == null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              setState(() {
+                                _selectedClassId = classes.first.id;
+                                _isInitialized = false;
+                              });
                             });
-                          },
-                        ),
+                          }
+                          return CustomDropdownField<String>(
+                            label: 'Class',
+                            hint: 'Select class',
+                            value: _selectedClassId,
+                            items: classes
+                                .map((c) => DropdownMenuItem(
+                                      value: c.id,
+                                      child: Text(c.displayName),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedClassId = value;
+                                _selectedSubjectId = null;
+                                _isInitialized = false;
+                              });
+                            },
+                          );
+                        },
                         loading: () => const LinearProgressIndicator(),
                         error: (_, __) => const Text('Error loading classes'),
                       ),
@@ -111,27 +126,40 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: subjectsAsync.when(
-                        data: (subjects) => CustomDropdownField<String>(
-                          label: 'Subject',
-                          hint: 'Select subject',
-                          value: _selectedSubjectId,
-                          items: subjects
-                              .map((s) => DropdownMenuItem(
-                                    value: s.id,
-                                    child: Text(s.name),
-                                  ))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedSubjectId = value;
-                              _isInitialized = false;
+                        data: (subjects) {
+                          if (subjects.length == 1 &&
+                              _selectedSubjectId == null &&
+                              _selectedClassId != null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              setState(() {
+                                _selectedSubjectId = subjects.first.id;
+                                _isInitialized = false;
+                                _loadStudents();
+                              });
                             });
-                            if (value != null && _selectedClassId != null) {
-                              _loadStudents();
-                            }
-                          },
-                          enabled: _selectedClassId != null,
-                        ),
+                          }
+                          return CustomDropdownField<String>(
+                            label: 'Subject',
+                            hint: 'Select subject',
+                            value: _selectedSubjectId,
+                            items: subjects
+                                .map((s) => DropdownMenuItem(
+                                      value: s.id,
+                                      child: Text(s.name),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedSubjectId = value;
+                                _isInitialized = false;
+                              });
+                              if (value != null && _selectedClassId != null) {
+                                _loadStudents();
+                              }
+                            },
+                            enabled: _selectedClassId != null,
+                          );
+                        },
                         loading: () => const LinearProgressIndicator(),
                         error: (_, __) => const Text('Error loading subjects'),
                       ),
@@ -145,7 +173,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   lastDate: DateTime.now(),
                   onChanged: (date) {
                     setState(() => _selectedDate = date);
-                    if (_selectedClassId != null && _selectedSubjectId != null) {
+                    if (_selectedClassId != null &&
+                        _selectedSubjectId != null) {
                       _loadStudents();
                     }
                   },
@@ -235,10 +264,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   void _loadStudents() {
     if (_selectedClassId == null) return;
-    
+
     ref.read(classStudentsProvider(_selectedClassId!)).whenData((students) {
       if (!_isInitialized) {
-        ref.read(attendanceNotifierProvider.notifier).initializeRecords(students);
+        ref
+            .read(attendanceNotifierProvider.notifier)
+            .initializeRecords(students);
         _isInitialized = true;
       }
     });
@@ -253,7 +284,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         return _AttendanceCard(
           record: record,
           onStatusChanged: (status) {
-            ref.read(attendanceNotifierProvider.notifier)
+            ref
+                .read(attendanceNotifierProvider.notifier)
                 .updateStatus(record.studentId, status);
           },
         );
@@ -264,9 +296,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Future<void> _openCamera() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.camera);
-    
+
     if (image != null && _selectedClassId != null) {
-      await ref.read(attendanceNotifierProvider.notifier)
+      await ref
+          .read(attendanceNotifierProvider.notifier)
           .recognizeFaces(File(image.path), _selectedClassId!);
     }
   }
@@ -274,12 +307,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Future<void> _submitAttendance() async {
     if (_selectedClassId == null || _selectedSubjectId == null) return;
 
-    final success = await ref.read(attendanceNotifierProvider.notifier)
-        .submitAttendance(
-          classId: _selectedClassId!,
-          subjectId: _selectedSubjectId!,
-          date: _selectedDate,
-        );
+    final success =
+        await ref.read(attendanceNotifierProvider.notifier).submitAttendance(
+              classId: _selectedClassId!,
+              subjectId: _selectedSubjectId!,
+              date: _selectedDate,
+            );
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -324,7 +357,8 @@ class _AttendanceCard extends StatelessWidget {
                         color: AppColors.success,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.face, size: 12, color: Colors.white),
+                      child:
+                          const Icon(Icons.face, size: 12, color: Colors.white),
                     ),
                   ),
               ],
@@ -340,12 +374,14 @@ class _AttendanceCard extends StatelessWidget {
                   ),
                   Text(
                     'Roll: ${record.rollNumber}',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   if (record.confidence != null)
                     Text(
                       'Confidence: ${(record.confidence! * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(fontSize: 11, color: AppColors.success),
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.success),
                     ),
                 ],
               ),
@@ -384,4 +420,3 @@ class _StatusSelector extends StatelessWidget {
     );
   }
 }
-

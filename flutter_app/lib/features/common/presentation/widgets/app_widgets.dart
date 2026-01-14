@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/config/app_config.dart';
 
 /// Loading indicator widget
 class LoadingWidget extends StatelessWidget {
@@ -16,7 +17,8 @@ class LoadingWidget extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(color ?? AppColors.primary),
+            valueColor:
+                AlwaysStoppedAnimation<Color>(color ?? AppColors.primary),
           ),
           if (message != null) ...[
             const SizedBox(height: 16),
@@ -253,7 +255,7 @@ class InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardColor = color ?? AppColors.primary;
-    
+
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -365,13 +367,23 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = name.isNotEmpty
-        ? name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+        ? name
+            .split(' ')
+            .map((e) => e.isNotEmpty ? e[0] : '')
+            .take(2)
+            .join()
+            .toUpperCase()
         : '?';
 
     if (imageUrl != null && imageUrl!.isNotEmpty) {
+      String fullUrl = imageUrl!;
+      if (!fullUrl.startsWith('http')) {
+        final baseUrl = AppConfig.baseUrl.replaceAll('/api/v1', '');
+        fullUrl = '$baseUrl$fullUrl';
+      }
       return CircleAvatar(
         radius: size / 2,
-        backgroundImage: NetworkImage(imageUrl!),
+        backgroundImage: NetworkImage(fullUrl),
         backgroundColor: backgroundColor ?? AppColors.surfaceVariant,
       );
     }
@@ -390,4 +402,3 @@ class UserAvatar extends StatelessWidget {
     );
   }
 }
-

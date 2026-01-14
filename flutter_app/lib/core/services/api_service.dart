@@ -12,7 +12,7 @@ final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
 class ApiService {
   late final Dio _dio;
   final Logger _logger = Logger();
-  
+
   ApiService() {
     _dio = Dio(BaseOptions(
       baseUrl: AppConfig.baseUrl,
@@ -23,10 +23,10 @@ class ApiService {
         'Accept': 'application/json',
       },
     ));
-    
+
     _setupInterceptors();
   }
-  
+
   void _setupInterceptors() {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -39,12 +39,14 @@ class ApiService {
         return handler.next(options);
       },
       onResponse: (response, handler) {
-        _logger.d('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
+        _logger.d(
+            'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
         return handler.next(response);
       },
       onError: (error, handler) async {
-        _logger.e('ERROR[${error.response?.statusCode}] => PATH: ${error.requestOptions.path}');
-        
+        _logger.e(
+            'ERROR[${error.response?.statusCode}] => PATH: ${error.requestOptions.path}');
+
         // Handle 401 - Token expired
         if (error.response?.statusCode == 401) {
           final refreshed = await _refreshToken();
@@ -53,7 +55,7 @@ class ApiService {
             final opts = error.requestOptions;
             final token = await StorageService.getAccessToken();
             opts.headers['Authorization'] = 'Bearer $token';
-            
+
             try {
               final response = await _dio.fetch(opts);
               return handler.resolve(response);
@@ -62,39 +64,42 @@ class ApiService {
             }
           }
         }
-        
+
         return handler.next(error);
       },
     ));
   }
-  
+
   Future<bool> _refreshToken() async {
     try {
       final refreshToken = await StorageService.getRefreshToken();
       if (refreshToken == null) return false;
-      
+
       final response = await Dio().post(
         '${AppConfig.baseUrl}/auth/refresh',
         data: {'refreshToken': refreshToken},
       );
-      
+
       if (response.statusCode == 200 && response.data['success']) {
-        await StorageService.saveAccessToken(response.data['data']['accessToken']);
-        await StorageService.saveRefreshToken(response.data['data']['refreshToken']);
+        await StorageService.saveAccessToken(
+            response.data['data']['accessToken']);
+        await StorageService.saveRefreshToken(
+            response.data['data']['refreshToken']);
         return true;
       }
     } catch (e) {
       _logger.e('Token refresh failed: $e');
     }
-    
+
     // Clear tokens on refresh failure
     await StorageService.clearAll();
     return false;
   }
-  
+
   // ============ HTTP Methods ============
-  
-  Future<ApiResponse> get(String path, {Map<String, dynamic>? queryParams}) async {
+
+  Future<ApiResponse> get(String path,
+      {Map<String, dynamic>? queryParams}) async {
     try {
       final response = await _dio.get(path, queryParameters: queryParams);
       return ApiResponse.success(response.data);
@@ -102,7 +107,7 @@ class ApiService {
       return _handleError(e);
     }
   }
-  
+
   Future<ApiResponse> post(String path, {dynamic data}) async {
     try {
       final response = await _dio.post(path, data: data);
@@ -111,7 +116,7 @@ class ApiService {
       return _handleError(e);
     }
   }
-  
+
   Future<ApiResponse> put(String path, {dynamic data}) async {
     try {
       final response = await _dio.put(path, data: data);
@@ -120,7 +125,7 @@ class ApiService {
       return _handleError(e);
     }
   }
-  
+
   Future<ApiResponse> delete(String path) async {
     try {
       final response = await _dio.delete(path);
@@ -129,7 +134,16 @@ class ApiService {
       return _handleError(e);
     }
   }
-  
+
+  Future<ApiResponse> postMultipart(String path, FormData formData) async {
+    try {
+      final response = await _dio.post(path, data: formData);
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return _handleError(e);
+    }
+  }
+
   Future<ApiResponse> uploadFile(
     String path,
     File file, {
@@ -145,19 +159,19 @@ class ApiService {
         ),
         ...?data,
       });
-      
+
       final response = await _dio.post(
         path,
         data: formData,
         onSendProgress: onProgress,
       );
-      
+
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
       return _handleError(e);
     }
   }
-  
+
   Future<ApiResponse> uploadMultipleFiles(
     String path,
     List<File> files, {
@@ -168,31 +182,31 @@ class ApiService {
     try {
       final multipartFiles = await Future.wait(
         files.map((file) => MultipartFile.fromFile(
-          file.path,
-          filename: file.path.split('/').last,
-        )),
+              file.path,
+              filename: file.path.split('/').last,
+            )),
       );
-      
+
       final formData = FormData.fromMap({
         fieldName: multipartFiles,
         ...?data,
       });
-      
+
       final response = await _dio.post(
         path,
         data: formData,
         onSendProgress: onProgress,
       );
-      
+
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
       return _handleError(e);
     }
   }
-  
+
   ApiResponse _handleError(DioException e) {
     String message = 'An error occurred';
-    
+
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
       message = 'Connection timeout. Please check your internet connection.';
@@ -200,13 +214,22 @@ class ApiService {
       message = 'No internet connection. Please check your network.';
     } else if (e.response != null) {
       final data = e.response?.data;
+      _logger.e('Error response data: $data'); // Log full error response
       if (data is Map && data['message'] != null) {
         message = data['message'];
+        // If there are validation errors, append them
+        if (data['errors'] != null && data['errors'] is List) {
+          final errors = (data['errors'] as List)
+              .map((e) => e['msg'] ?? e.toString())
+              .join(', ');
+          message += ': $errors';
+          _logger.e('Validation errors: $errors');
+        }
       } else {
         message = 'Server error: ${e.response?.statusCode}';
       }
     }
-    
+
     return ApiResponse.error(message, statusCode: e.response?.statusCode);
   }
 }
@@ -217,14 +240,14 @@ class ApiResponse {
   final dynamic data;
   final String? message;
   final int? statusCode;
-  
+
   ApiResponse._({
     required this.success,
     this.data,
     this.message,
     this.statusCode,
   });
-  
+
   factory ApiResponse.success(dynamic data) {
     return ApiResponse._(
       success: data['success'] ?? true,
@@ -232,7 +255,7 @@ class ApiResponse {
       message: data['message'],
     );
   }
-  
+
   factory ApiResponse.error(String message, {int? statusCode}) {
     return ApiResponse._(
       success: false,
@@ -241,4 +264,3 @@ class ApiResponse {
     );
   }
 }
-

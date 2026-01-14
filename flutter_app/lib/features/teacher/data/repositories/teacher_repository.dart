@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/api_service.dart';
@@ -21,7 +22,9 @@ class TeacherRepository {
   Future<List<ClassModel>> getMyClasses() async {
     final response = await _apiService.get('/classes');
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => ClassModel.fromJson(e)).toList();
+      return (response.data as List)
+          .map((e) => ClassModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -31,7 +34,9 @@ class TeacherRepository {
       if (classId != null) 'classId': classId,
     });
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => SubjectModel.fromJson(e)).toList();
+      return (response.data as List)
+          .map((e) => SubjectModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -41,7 +46,11 @@ class TeacherRepository {
       'classId': classId,
     });
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => StudentDetailModel.fromJson(e)).toList();
+      // Backend returns paginated response: {students: [], pagination: {}}
+      final students = response.data['students'] ?? response.data;
+      return (students as List)
+          .map((e) => StudentDetailModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -58,7 +67,9 @@ class TeacherRepository {
       if (date != null) 'date': date.toIso8601String().split('T')[0],
     });
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => AttendanceModel.fromJson(e)).toList();
+      return (response.data as List)
+          .map((e) => AttendanceModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -113,7 +124,9 @@ class TeacherRepository {
       if (examType != null) 'examType': examType,
     });
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => MarksModel.fromJson(e)).toList();
+      return (response.data as List)
+          .map((e) => MarksModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -144,7 +157,9 @@ class TeacherRepository {
       if (studentId != null) 'studentId': studentId,
     });
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => RemarkModel.fromJson(e)).toList();
+      return (response.data as List)
+          .map((e) => RemarkModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -175,7 +190,11 @@ class TeacherRepository {
       if (subjectId != null) 'subjectId': subjectId,
     });
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => QuizModel.fromJson(e)).toList();
+      // Handle both paginated and direct array responses
+      final data = response.data is Map
+          ? (response.data['quizzes'] ?? response.data['data'] ?? [])
+          : response.data;
+      return (data as List).map((e) => QuizModel.fromJson(e)).toList();
     }
     return [];
   }
@@ -224,28 +243,63 @@ class TeacherRepository {
     return ApiResult.failure(response.message ?? 'Failed to create quiz');
   }
 
-  Future<ApiResult<List<Map<String, dynamic>>>> generateQuizQuestions({
+  Future<ApiResult<Map<String, dynamic>>> generateQuiz({
     required String topic,
-    required int count,
-    required String difficulty,
+    required String subjectId,
+    required String classId,
+    int count = 10,
+    String questionType = 'MCQ',
+    String? title,
+    int? timeLimit,
+    bool saveQuiz = false,
   }) async {
     final response = await _apiService.post('/ai/generate-quiz', data: {
       'topic': topic,
+      'subjectId': subjectId,
+      'classId': classId,
       'count': count,
-      'difficulty': difficulty,
+      'questionType': questionType,
+      'title': title,
+      'timeLimit': timeLimit,
+      'saveQuiz': saveQuiz,
     });
     if (response.success && response.data != null) {
-      return ApiResult.success(
-        List<Map<String, dynamic>>.from(response.data['questions'] ?? []),
-      );
+      return ApiResult.success(Map<String, dynamic>.from(response.data));
     }
-    return ApiResult.failure(response.message ?? 'Failed to generate questions');
+    return ApiResult.failure(response.message ?? 'Failed to generate quiz');
+  }
+
+  Future<ApiResult<void>> updateQuiz(String id,
+      {String? title,
+      String? description,
+      int? duration,
+      bool? isActive}) async {
+    final response = await _apiService.put('/quizzes/$id', data: {
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (duration != null) 'duration': duration,
+      if (isActive != null) 'isActive': isActive,
+    });
+    if (response.success) {
+      return ApiResult.success(null);
+    }
+    return ApiResult.failure(response.message ?? 'Failed to update quiz');
+  }
+
+  Future<ApiResult<void>> deleteQuiz(String id) async {
+    final response = await _apiService.delete('/quizzes/$id');
+    if (response.success) {
+      return ApiResult.success(null);
+    }
+    return ApiResult.failure(response.message ?? 'Failed to delete quiz');
   }
 
   Future<List<QuizAttemptModel>> getQuizResults(String quizId) async {
     final response = await _apiService.get('/quizzes/$quizId/results');
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => QuizAttemptModel.fromJson(e)).toList();
+      return (response.data as List)
+          .map((e) => QuizAttemptModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -256,7 +310,11 @@ class TeacherRepository {
       if (subjectId != null) 'subjectId': subjectId,
     });
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => TextbookModel.fromJson(e)).toList();
+      // Handle both paginated and direct array responses
+      final data = response.data is Map
+          ? (response.data['textbooks'] ?? response.data['data'] ?? [])
+          : response.data;
+      return (data as List).map((e) => TextbookModel.fromJson(e)).toList();
     }
     return [];
   }
@@ -294,7 +352,9 @@ class TeacherRepository {
   Future<List<ChatMessageModel>> getChatHistory() async {
     final response = await _apiService.get('/chat/history');
     if (response.success && response.data != null) {
-      return (response.data as List).map((e) => ChatMessageModel.fromJson(e)).toList();
+      return (response.data as List)
+          .map((e) => ChatMessageModel.fromJson(e))
+          .toList();
     }
     return [];
   }
@@ -304,7 +364,8 @@ class TeacherRepository {
       'message': message,
     });
     if (response.success && response.data != null) {
-      return ApiResult.success(response.data['response'] ?? '');
+      final assistantMsg = response.data['assistantMessage'];
+      return ApiResult.success(assistantMsg?['content'] ?? '');
     }
     return ApiResult.failure(response.message ?? 'Failed to send message');
   }
@@ -313,5 +374,66 @@ class TeacherRepository {
     final response = await _apiService.delete('/chat/history');
     return response.success;
   }
-}
 
+  // Face Recognition Attendance
+  Future<ApiResult<Map<String, dynamic>>> processAttendancePhotos({
+    required String classId,
+    required DateTime date,
+    required String session,
+    required List<File> photos,
+  }) async {
+    final formData = FormData.fromMap({
+      'classId': classId,
+      'date': date.toIso8601String(),
+      'session': session,
+      'photos': await Future.wait(photos.map((photo) async {
+        return await MultipartFile.fromFile(photo.path,
+            filename: photo.path.split('/').last);
+      })),
+    });
+
+    final response = await _apiService.postMultipart(
+        '/face-recognition/mark-attendance', formData);
+    if (response.success && response.data != null) {
+      return ApiResult.success(response.data);
+    }
+    return ApiResult.failure(response.message ?? 'Failed to process photos');
+  }
+
+  Future<ApiResult<void>> confirmAttendance({
+    required String classId,
+    required DateTime date,
+    required List<Map<String, dynamic>> attendance,
+  }) async {
+    final response =
+        await _apiService.post('/face-recognition/confirm-attendance', data: {
+      'classId': classId,
+      'date': date.toIso8601String(),
+      'attendance': attendance,
+      'method': 'FACE_RECOGNITION',
+    });
+    if (response.success) {
+      return ApiResult.success(null);
+    }
+    return ApiResult.failure(
+        response.message ?? 'Failed to confirm attendance');
+  }
+
+  Future<ApiResult<void>> uploadStudentFacePhoto({
+    required String studentId,
+    required File photo,
+  }) async {
+    final formData = FormData.fromMap({
+      'studentId': studentId,
+      'photo': await MultipartFile.fromFile(photo.path,
+          filename: photo.path.split('/').last),
+    });
+
+    final response = await _apiService.postMultipart(
+        '/face-recognition/upload-reference', formData);
+    if (response.success) {
+      return ApiResult.success(null);
+    }
+    return ApiResult.failure(response.message ?? 'Failed to upload photo');
+  }
+}

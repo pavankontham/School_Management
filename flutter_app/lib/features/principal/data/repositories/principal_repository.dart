@@ -1,9 +1,11 @@
 import 'dart:io';
-
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/api_service.dart';
 import '../models/teacher_model.dart';
+import '../models/dashboard_models.dart';
+import '../models/school_model.dart';
 
 final principalRepositoryProvider = Provider<PrincipalRepository>((ref) {
   return PrincipalRepository(ref.read(apiServiceProvider));
@@ -14,11 +16,85 @@ class PrincipalRepository {
 
   PrincipalRepository(this._apiService);
 
+  // School Info
+  Future<SchoolModel?> getSchoolInfo() async {
+    final response = await _apiService.get('/schools/current');
+    if (response.success && response.data != null) {
+      return SchoolModel.fromJson(response.data);
+    }
+    return null;
+  }
+
   // Dashboard Stats
   Future<DashboardStats?> getDashboardStats() async {
     final response = await _apiService.get('/dashboard/stats');
     if (response.success && response.data != null) {
       return DashboardStats.fromJson(response.data);
+    }
+    return null;
+  }
+
+  Future<List<DashboardPostModel>> getDashboardPosts({String? type}) async {
+    final response = await _apiService.get('/dashboard/posts', queryParams: {
+      if (type != null) 'type': type,
+    });
+    if (response.success && response.data != null) {
+      final posts = response.data['posts'] ?? [];
+      return (posts as List)
+          .map((e) => DashboardPostModel.fromJson(e))
+          .toList();
+    }
+    return [];
+  }
+
+  Future<ApiResult<DashboardPostModel>> createDashboardPost({
+    required String title,
+    required String content,
+    required String type,
+    bool isPinned = false,
+  }) async {
+    final response = await _apiService.post('/dashboard/posts', data: {
+      'title': title,
+      'content': content,
+      'type': type,
+      'isPinned': isPinned,
+    });
+    if (response.success && response.data != null) {
+      return ApiResult.success(DashboardPostModel.fromJson(response.data));
+    }
+    return ApiResult.failure(response.message ?? 'Failed to create post');
+  }
+
+  Future<ApiResult<DashboardPostModel>> updateDashboardPost(
+    String id, {
+    String? title,
+    String? content,
+    String? type,
+    bool? isPinned,
+    bool? isPublished,
+  }) async {
+    final response = await _apiService.put('/dashboard/posts/$id', data: {
+      if (title != null) 'title': title,
+      if (content != null) 'content': content,
+      if (type != null) 'type': type,
+      if (isPinned != null) 'isPinned': isPinned,
+      if (isPublished != null) 'isPublished': isPublished,
+    });
+    if (response.success && response.data != null) {
+      return ApiResult.success(DashboardPostModel.fromJson(response.data));
+    }
+    return ApiResult.failure(response.message ?? 'Failed to update post');
+  }
+
+  Future<bool> deleteDashboardPost(String id) async {
+    final response = await _apiService.delete('/dashboard/posts/$id');
+    return response.success;
+  }
+
+  Future<DashboardPostModel?> getPostById(String postId) async {
+    final response = await _apiService.get('/dashboard/posts/$postId');
+    if (response.success && response.data != null) {
+      return DashboardPostModel.fromJson(response.data);
     }
     return null;
   }
@@ -29,9 +105,9 @@ class PrincipalRepository {
       if (search != null) 'search': search,
     });
     if (response.success && response.data != null) {
-      return (response.data as List)
-          .map((e) => TeacherModel.fromJson(e))
-          .toList();
+      // Backend returns paginated response: {users: [], pagination: {}}
+      final users = response.data['users'] ?? response.data;
+      return (users as List).map((e) => TeacherModel.fromJson(e)).toList();
     }
     return [];
   }
@@ -174,11 +250,13 @@ class PrincipalRepository {
     required String name,
     required String code,
     String? description,
+    String? classId,
   }) async {
     final response = await _apiService.post('/subjects', data: {
       'name': name,
       'code': code,
       'description': description,
+      if (classId != null) 'classId': classId,
     });
     if (response.success && response.data != null) {
       return ApiResult.success(SubjectModel.fromJson(response.data));
@@ -211,6 +289,20 @@ class PrincipalRepository {
     return ApiResult.failure(response.message ?? 'Failed to delete subject');
   }
 
+  Future<ApiResult<void>> assignTeacherToSubject({
+    required String subjectId,
+    String? teacherId,
+  }) async {
+    final response =
+        await _apiService.put('/subjects/$subjectId/assign-teacher', data: {
+      if (teacherId != null) 'teacherId': teacherId,
+    });
+    if (response.success) {
+      return ApiResult.success(null);
+    }
+    return ApiResult.failure(response.message ?? 'Failed to assign teacher');
+  }
+
   // Students
   Future<List<StudentDetailModel>> getStudents({
     String? classId,
@@ -221,7 +313,9 @@ class PrincipalRepository {
       if (search != null) 'search': search,
     });
     if (response.success && response.data != null) {
-      return (response.data as List)
+      // Backend returns paginated response: {students: [], pagination: {}}
+      final students = response.data['students'] ?? response.data;
+      return (students as List)
           .map((e) => StudentDetailModel.fromJson(e))
           .toList();
     }
@@ -318,6 +412,24 @@ class PrincipalRepository {
     );
     return response.success;
   }
+
+  Future<ApiResult<Map<String, dynamic>>> uploadStudentFacePhoto({
+    required String studentId,
+    required File photo,
+  }) async {
+    final formData = FormData.fromMap({
+      'studentId': studentId,
+      'photo': await MultipartFile.fromFile(photo.path),
+    });
+    final response = await _apiService.postMultipart(
+      '/face-recognition/upload-reference',
+      formData,
+    );
+    if (response.success && response.data != null) {
+      return ApiResult.success(Map<String, dynamic>.from(response.data));
+    }
+    return ApiResult.failure(response.message ?? 'Failed to upload photo');
+  }
 }
 
 class DashboardStats {
@@ -327,6 +439,8 @@ class DashboardStats {
   final int totalSubjects;
   final double attendanceRate;
   final int pendingNotifications;
+  final List<DashboardPostModel> recentPosts;
+  final List<UpcomingEventModel> upcomingEvents;
 
   DashboardStats({
     required this.totalTeachers,
@@ -335,16 +449,39 @@ class DashboardStats {
     required this.totalSubjects,
     required this.attendanceRate,
     required this.pendingNotifications,
+    this.recentPosts = const [],
+    this.upcomingEvents = const [],
   });
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
+    final overview = json['overview'] ?? {};
+    final todayAttendance = json['todayAttendance'] ?? {};
+
+    // Calculate attendance rate
+    final present = (todayAttendance['present'] ?? 0) as int;
+    final absent = (todayAttendance['absent'] ?? 0) as int;
+    final late = (todayAttendance['late'] ?? 0) as int;
+    final excused = (todayAttendance['excused'] ?? 0) as int;
+    final total = present + absent + late + excused;
+    final attendanceRate = total > 0 ? (present / total) * 100 : 0.0;
+
     return DashboardStats(
-      totalTeachers: json['totalTeachers'] ?? 0,
-      totalStudents: json['totalStudents'] ?? 0,
-      totalClasses: json['totalClasses'] ?? 0,
-      totalSubjects: json['totalSubjects'] ?? 0,
-      attendanceRate: (json['attendanceRate'] ?? 0).toDouble(),
-      pendingNotifications: json['pendingNotifications'] ?? 0,
+      totalTeachers: overview['totalTeachers'] ?? 0,
+      totalStudents: overview['totalStudents'] ?? 0,
+      totalClasses: overview['totalClasses'] ?? 0,
+      totalSubjects: 0, // Not provided by backend
+      attendanceRate: attendanceRate,
+      pendingNotifications: 0,
+      recentPosts: json['recentPosts'] != null
+          ? (json['recentPosts'] as List)
+              .map((e) => DashboardPostModel.fromJson(e))
+              .toList()
+          : [],
+      upcomingEvents: json['upcomingEvents'] != null
+          ? (json['upcomingEvents'] as List)
+              .map((e) => UpcomingEventModel.fromJson(e))
+              .toList()
+          : [],
     );
   }
 }
@@ -360,4 +497,3 @@ class ApiResult<T> {
   factory ApiResult.failure(String error) =>
       ApiResult._(success: false, error: error);
 }
-

@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/services/api_service.dart';
 import '../../../principal/data/models/teacher_model.dart';
-import '../../../principal/data/repositories/principal_repository.dart';
 import '../../data/models/attendance_model.dart';
 import '../../data/models/quiz_model.dart';
 import '../../data/repositories/teacher_repository.dart';
@@ -13,11 +13,14 @@ final myClassesProvider = FutureProvider<List<ClassModel>>((ref) async {
   return ref.read(teacherRepositoryProvider).getMyClasses();
 });
 
-final mySubjectsProvider = FutureProvider.family<List<SubjectModel>, String?>((ref, classId) async {
+final mySubjectsProvider =
+    FutureProvider.family<List<SubjectModel>, String?>((ref, classId) async {
   return ref.read(teacherRepositoryProvider).getMySubjects(classId: classId);
 });
 
-final classStudentsProvider = FutureProvider.family<List<StudentDetailModel>, String>((ref, classId) async {
+final classStudentsProvider =
+    FutureProvider.family<List<StudentDetailModel>, String>(
+        (ref, classId) async {
   return ref.read(teacherRepositoryProvider).getStudentsByClass(classId);
 });
 
@@ -41,12 +44,24 @@ class AttendanceFilter {
   int get hashCode => classId.hashCode ^ subjectId.hashCode ^ (date?.day ?? 0);
 }
 
-final attendanceProvider = FutureProvider.family<List<AttendanceModel>, AttendanceFilter>((ref, filter) async {
+final attendanceProvider =
+    FutureProvider.family<List<AttendanceModel>, AttendanceFilter>(
+        (ref, filter) async {
   return ref.read(teacherRepositoryProvider).getAttendance(
-    classId: filter.classId,
-    subjectId: filter.subjectId,
-    date: filter.date,
-  );
+        classId: filter.classId,
+        subjectId: filter.subjectId,
+        date: filter.date,
+      );
+});
+
+final classAttendanceSummaryProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, classId) async {
+  final response =
+      await ref.read(apiServiceProvider).get('/attendance/summary/$classId');
+  if (response.success && response.data != null) {
+    return Map<String, dynamic>.from(response.data);
+  }
+  return {};
 });
 
 // Attendance State
@@ -82,18 +97,21 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
   final TeacherRepository _repository;
   final Ref _ref;
 
-  AttendanceNotifier(this._repository, this._ref) : super(const AttendanceState());
+  AttendanceNotifier(this._repository, this._ref)
+      : super(const AttendanceState());
 
   void initializeRecords(List<StudentDetailModel> students) {
     state = state.copyWith(
-      records: students.map((s) => AttendanceRecord.fromStudent({
-        'id': s.id,
-        'firstName': s.firstName,
-        'lastName': s.lastName,
-        'rollNumber': s.rollNumber,
-        'profileImage': s.profileImage,
-        'faceEncoding': s.hasFaceEncoding ? 'exists' : null,
-      })).toList(),
+      records: students
+          .map((s) => AttendanceRecord.fromStudent({
+                'id': s.id,
+                'firstName': s.firstName,
+                'lastName': s.lastName,
+                'rollNumber': s.rollNumber,
+                'profileImage': s.profileImage,
+                'faceEncoding': s.hasFaceEncoding ? 'exists' : null,
+              }))
+          .toList(),
     );
   }
 
@@ -125,7 +143,8 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
   Future<bool> recognizeFaces(File photo, String classId) async {
     state = state.copyWith(isRecognizing: true, error: null);
 
-    final result = await _repository.recognizeFaces(photo: photo, classId: classId);
+    final result =
+        await _repository.recognizeFaces(photo: photo, classId: classId);
 
     if (result.success && result.data != null) {
       final records = [...state.records];
@@ -153,19 +172,21 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
 
-    final records = state.records.map((r) => {
-      'studentId': r.studentId,
-      'status': r.status == AttendanceStatus.present
-          ? 'PRESENT'
-          : r.status == AttendanceStatus.late
-              ? 'LATE'
-              : r.status == AttendanceStatus.excused
-                  ? 'EXCUSED'
-                  : 'ABSENT',
-      'method': r.confidence != null ? 'FACE_RECOGNITION' : 'MANUAL',
-      'confidence': r.confidence,
-      'remarks': r.remarks,
-    }).toList();
+    final records = state.records
+        .map((r) => {
+              'studentId': r.studentId,
+              'status': r.status == AttendanceStatus.present
+                  ? 'PRESENT'
+                  : r.status == AttendanceStatus.late
+                      ? 'LATE'
+                      : r.status == AttendanceStatus.excused
+                          ? 'EXCUSED'
+                          : 'ABSENT',
+              'method': r.confidence != null ? 'FACE_RECOGNITION' : 'MANUAL',
+              'confidence': r.confidence,
+              'remarks': r.remarks,
+            })
+        .toList();
 
     final result = await _repository.submitAttendance(
       classId: classId,
@@ -189,7 +210,8 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
   }
 }
 
-final attendanceNotifierProvider = StateNotifierProvider<AttendanceNotifier, AttendanceState>((ref) {
+final attendanceNotifierProvider =
+    StateNotifierProvider<AttendanceNotifier, AttendanceState>((ref) {
   return AttendanceNotifier(ref.read(teacherRepositoryProvider), ref);
 });
 
@@ -213,16 +235,18 @@ class MarksFilter {
   int get hashCode => (classId ?? '').hashCode ^ (subjectId ?? '').hashCode;
 }
 
-final marksProvider = FutureProvider.family<List<MarksModel>, MarksFilter>((ref, filter) async {
+final marksProvider =
+    FutureProvider.family<List<MarksModel>, MarksFilter>((ref, filter) async {
   return ref.read(teacherRepositoryProvider).getMarks(
-    classId: filter.classId,
-    subjectId: filter.subjectId,
-    examType: filter.examType,
-  );
+        classId: filter.classId,
+        subjectId: filter.subjectId,
+        examType: filter.examType,
+      );
 });
 
 // Quizzes
-final quizzesProvider = FutureProvider.family<List<QuizModel>, String?>((ref, subjectId) async {
+final quizzesProvider =
+    FutureProvider.family<List<QuizModel>, String?>((ref, subjectId) async {
   return ref.read(teacherRepositoryProvider).getQuizzes(subjectId: subjectId);
 });
 
@@ -230,12 +254,14 @@ final quizProvider = FutureProvider.family<QuizModel?, String>((ref, id) async {
   return ref.read(teacherRepositoryProvider).getQuiz(id);
 });
 
-final quizResultsProvider = FutureProvider.family<List<QuizAttemptModel>, String>((ref, quizId) async {
+final quizResultsProvider =
+    FutureProvider.family<List<QuizAttemptModel>, String>((ref, quizId) async {
   return ref.read(teacherRepositoryProvider).getQuizResults(quizId);
 });
 
 // Textbooks
-final textbooksProvider = FutureProvider.family<List<TextbookModel>, String?>((ref, subjectId) async {
+final textbooksProvider =
+    FutureProvider.family<List<TextbookModel>, String?>((ref, subjectId) async {
   return ref.read(teacherRepositoryProvider).getTextbooks(subjectId: subjectId);
 });
 
@@ -318,7 +344,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 }
 
-final chatNotifierProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
+final chatNotifierProvider =
+    StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   return ChatNotifier(ref.read(teacherRepositoryProvider));
 });
-

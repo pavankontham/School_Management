@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../common/presentation/widgets/custom_text_field.dart';
@@ -27,11 +30,13 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
   final _parentEmailController = TextEditingController();
   final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   String? _selectedClassId;
   String? _selectedGender;
   DateTime? _dateOfBirth;
   bool _obscurePassword = true;
+  File? _facePhoto;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -50,7 +55,7 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_selectedClassId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a class')),
@@ -58,21 +63,33 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
       return;
     }
 
-    final success = await ref.read(studentManagementProvider.notifier).createStudent(
-      rollNumber: _rollNumberController.text.trim(),
-      firstName: _firstNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-      classId: _selectedClassId!,
-      password: _passwordController.text.isEmpty ? null : _passwordController.text,
-      email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
-      phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-      parentName: _parentNameController.text.trim(),
-      parentPhone: _parentPhoneController.text.trim(),
-      parentEmail: _parentEmailController.text.trim().isEmpty ? null : _parentEmailController.text.trim(),
-      address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-      dateOfBirth: _dateOfBirth,
-      gender: _selectedGender,
-    );
+    final success =
+        await ref.read(studentManagementProvider.notifier).createStudent(
+              rollNumber: _rollNumberController.text.trim(),
+              firstName: _firstNameController.text.trim(),
+              lastName: _lastNameController.text.trim(),
+              classId: _selectedClassId!,
+              password: _passwordController.text.isEmpty
+                  ? null
+                  : _passwordController.text,
+              email: _emailController.text.trim().isEmpty
+                  ? null
+                  : _emailController.text.trim(),
+              phone: _phoneController.text.trim().isEmpty
+                  ? null
+                  : _phoneController.text.trim(),
+              parentName: _parentNameController.text.trim(),
+              parentPhone: _parentPhoneController.text.trim(),
+              parentEmail: _parentEmailController.text.trim().isEmpty
+                  ? null
+                  : _parentEmailController.text.trim(),
+              address: _addressController.text.trim().isEmpty
+                  ? null
+                  : _addressController.text.trim(),
+              dateOfBirth: _dateOfBirth,
+              gender: _selectedGender,
+              facePhoto: _facePhoto,
+            );
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,10 +99,34 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
+
+      if (image != null) {
+        setState(() {
+          _facePhoto = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _selectDateOfBirth() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 10)),
+      initialDate: _dateOfBirth ??
+          DateTime.now().subtract(const Duration(days: 365 * 10)),
       firstDate: DateTime(1990),
       lastDate: DateTime.now(),
     );
@@ -115,23 +156,28 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
                     color: AppColors.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(state.error!, style: const TextStyle(color: AppColors.error)),
+                  child: Text(state.error!,
+                      style: const TextStyle(color: AppColors.error)),
                 ),
                 const SizedBox(height: 16),
               ],
 
               // Class Selection
-              const Text('Class *', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Class *',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               classesAsync.when(
                 data: (classes) => DropdownButtonFormField<String>(
                   value: _selectedClassId,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration:
+                      const InputDecoration(border: OutlineInputBorder()),
                   hint: const Text('Select Class'),
-                  items: classes.map((c) => DropdownMenuItem(
-                    value: c.id,
-                    child: Text(c.displayName),
-                  )).toList(),
+                  items: classes
+                      .map((c) => DropdownMenuItem(
+                            value: c.id,
+                            child: Text(c.displayName),
+                          ))
+                      .toList(),
                   onChanged: (v) => setState(() => _selectedClassId = v),
                   validator: (v) => v == null ? 'Required' : null,
                 ),
@@ -151,13 +197,15 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
 
               // Name
               Row(children: [
-                Expanded(child: CustomTextField(
+                Expanded(
+                    child: CustomTextField(
                   controller: _firstNameController,
                   label: 'First Name *',
                   validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
                 )),
                 const SizedBox(width: 16),
-                Expanded(child: CustomTextField(
+                Expanded(
+                    child: CustomTextField(
                   controller: _lastNameController,
                   label: 'Last Name *',
                   validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
@@ -180,7 +228,8 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
               const SizedBox(height: 24),
 
               // Parent Info
-              const Text('Parent/Guardian Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Parent/Guardian Information',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               CustomTextField(
                 controller: _parentNameController,
@@ -209,13 +258,15 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
               const SizedBox(height: 24),
 
               // Additional Info
-              const Text('Additional Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Additional Information',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
 
               // Gender
               DropdownButtonFormField<String>(
                 value: _selectedGender,
-                decoration: const InputDecoration(labelText: 'Gender', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Gender', border: OutlineInputBorder()),
                 items: const [
                   DropdownMenuItem(value: 'MALE', child: Text('Male')),
                   DropdownMenuItem(value: 'FEMALE', child: Text('Female')),
@@ -229,10 +280,11 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
               InkWell(
                 onTap: _selectDateOfBirth,
                 child: InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Date of Birth', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                      labelText: 'Date of Birth', border: OutlineInputBorder()),
                   child: Text(_dateOfBirth != null
-                    ? '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}'
-                    : 'Select date'),
+                      ? '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}'
+                      : 'Select date'),
                 ),
               ),
               const SizedBox(height: 16),
@@ -244,8 +296,74 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
                 hint: 'Leave empty for auto-generated',
                 obscureText: _obscurePassword,
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Face Photo Upload
+              const Text(
+                'Face Photo for Attendance',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      if (_facePhoto != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            _facePhoto!,
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _pickImage(ImageSource.camera),
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text('Take Photo'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _pickImage(ImageSource.gallery),
+                              icon: const Icon(Icons.photo_library),
+                              label: const Text('From Gallery'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_facePhoto != null)
+                        TextButton.icon(
+                          onPressed: () => setState(() => _facePhoto = null),
+                          icon:
+                              const Icon(Icons.delete, color: AppColors.error),
+                          label: const Text('Remove Photo',
+                              style: TextStyle(color: AppColors.error)),
+                        ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Upload a clear photo of the student\'s face for attendance recognition',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 32),
@@ -262,4 +380,3 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
     );
   }
 }
-

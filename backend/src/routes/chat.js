@@ -40,7 +40,7 @@ async function generateAIResponse(prompt, systemPrompt, history = []) {
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       // Build conversation history
       const chatHistory = history.map(msg => ({
@@ -66,7 +66,7 @@ async function generateAIResponse(prompt, systemPrompt, history = []) {
     } catch (error) {
       lastError = error;
       logger.error(`AI generation attempt ${attempt} failed:`, error);
-      
+
       if (attempt < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
@@ -187,7 +187,7 @@ router.post('/message', [
     });
   } catch (error) {
     logger.error('Chat error:', error);
-    
+
     // Save error message
     await prisma.chatMessage.create({
       data: {

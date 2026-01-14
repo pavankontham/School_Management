@@ -127,6 +127,7 @@ class ClassAssignment extends Equatable {
 class SubjectModel extends Equatable {
   final String id;
   final String name;
+  final String code;
   final String? description;
   final String classId;
   final String? className;
@@ -137,6 +138,7 @@ class SubjectModel extends Equatable {
   const SubjectModel({
     required this.id,
     required this.name,
+    required this.code,
     this.description,
     required this.classId,
     this.className,
@@ -149,6 +151,7 @@ class SubjectModel extends Equatable {
     return SubjectModel(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
+      code: json['code'] ?? '',
       description: json['description'],
       classId: json['classId'] ?? '',
       className: json['class']?['name'],
@@ -164,6 +167,7 @@ class SubjectModel extends Equatable {
     return {
       'id': id,
       'name': name,
+      'code': code,
       'description': description,
       'classId': classId,
       'teacherId': teacherId,

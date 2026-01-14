@@ -1,0 +1,18 @@
+# Render Database Connection String
+
+## Full External Connection URL (use this):
+postgresql://school_admin:3J8oYBszSLbWSz9pmJ4i0trgjZv95EJW@dpg-d5d07her433s73a74v90-a.oregon-postgres.render.com/school_management_0g1h
+
+## Instructions:
+
+1. Copy the URL above
+2. Open: backend/.env
+3. Temporarily replace DATABASE_URL with the URL above
+4. Save the file
+5. Run the migration commands below
+6. Change DATABASE_URL back to your local database
+
+## IMPORTANT: Add the external hostname!
+The internal URL you provided is missing the external hostname.
+Add: .oregon-postgres.render.com
+(or check Render dashboard for the correct external hostname)

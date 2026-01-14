@@ -7,6 +7,8 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../common/presentation/widgets/app_widgets.dart';
 import '../../data/repositories/principal_repository.dart';
 import '../providers/principal_providers.dart';
+import '../../data/models/dashboard_models.dart';
+import '../../../common/presentation/widgets/notification_icon_button.dart';
 
 class PrincipalDashboardScreen extends ConsumerWidget {
   const PrincipalDashboardScreen({super.key});
@@ -38,9 +40,8 @@ class PrincipalDashboardScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.push('/principal/notifications'),
+          NotificationIconButton(
+            onTap: () => context.push('/principal/notifications'),
           ),
           PopupMenuButton<String>(
             icon: UserAvatar(name: user?.fullName ?? 'P', size: 36),
@@ -50,6 +51,14 @@ class PrincipalDashboardScreen extends ConsumerWidget {
                 child: ListTile(
                   leading: Icon(Icons.person_outline),
                   title: Text('Profile'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'teacher_dashboard',
+                child: ListTile(
+                  leading: Icon(Icons.school),
+                  title: Text('Teacher Dashboard'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -66,7 +75,8 @@ class PrincipalDashboardScreen extends ConsumerWidget {
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: AppColors.error),
-                  title: Text('Logout', style: TextStyle(color: AppColors.error)),
+                  title:
+                      Text('Logout', style: TextStyle(color: AppColors.error)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -75,6 +85,9 @@ class PrincipalDashboardScreen extends ConsumerWidget {
               switch (value) {
                 case 'profile':
                   context.push('/principal/profile');
+                  break;
+                case 'teacher_dashboard':
+                  context.push('/teacher');
                   break;
                 case 'school':
                   context.push('/principal/school');
@@ -131,7 +144,12 @@ class PrincipalDashboardScreen extends ConsumerWidget {
                 onAction: () => context.push('/principal/posts'),
               ),
               const SizedBox(height: 8),
-              _buildRecentPosts(context, ref),
+              statsAsync.when(
+                data: (stats) =>
+                    _buildRecentPosts(context, ref, stats?.recentPosts ?? []),
+                loading: () => const LoadingWidget(),
+                error: (e, _) => Text('Error: $e'),
+              ),
             ],
           ),
         ),
@@ -186,7 +204,7 @@ class PrincipalDashboardScreen extends ConsumerWidget {
           value: '${stats.attendanceRate.toStringAsFixed(1)}%',
           icon: Icons.check_circle,
           color: AppColors.success,
-          onTap: () {},
+          onTap: () => context.push('/principal/attendance'),
         ),
       ],
     );
@@ -213,40 +231,98 @@ class PrincipalDashboardScreen extends ConsumerWidget {
           onTap: () => context.push('/principal/classes/add'),
         ),
         _QuickActionChip(
-          label: 'Send Notification',
-          icon: Icons.notifications_active,
-          onTap: () => context.push('/principal/notifications/create'),
+          label: 'Attendance',
+          icon: Icons.checklist,
+          onTap: () => context.push('/principal/attendance'),
+        ),
+        _QuickActionChip(
+          label: 'Marks',
+          icon: Icons.grade,
+          onTap: () => context.push('/principal/marks'),
+        ),
+        _QuickActionChip(
+          label: 'Quizzes',
+          icon: Icons.quiz,
+          onTap: () => context.push('/principal/quizzes'),
+        ),
+        _QuickActionChip(
+          label: 'Textbooks',
+          icon: Icons.book,
+          onTap: () => context.push('/principal/textbooks'),
+        ),
+        _QuickActionChip(
+          label: 'AI Chat',
+          icon: Icons.chat,
+          onTap: () => context.push('/principal/chat'),
         ),
       ],
     );
   }
 
-  Widget _buildRecentPosts(BuildContext context, WidgetRef ref) {
-    // Placeholder for recent posts
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.article_outlined,
-              size: 48,
-              color: AppColors.textTertiary,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No recent posts',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => context.push('/principal/posts/create'),
-              child: const Text('Create your first post'),
-            ),
-          ],
+  Widget _buildRecentPosts(
+      BuildContext context, WidgetRef ref, List<DashboardPostModel> posts) {
+    if (posts.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.article_outlined,
+                size: 48,
+                color: AppColors.textTertiary,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No recent posts',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => context.push('/principal/posts/create'),
+                child: const Text('Create your first post'),
+              ),
+            ],
+          ),
         ),
-      ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              child: Icon(
+                post.type == 'EVENT' ? Icons.event : Icons.article,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              post.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              '${post.type} • ${_formatDate(post.createdAt)}',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () => context.push('/principal/posts/${post.id}'),
+          ),
+        );
+      },
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
@@ -362,4 +438,3 @@ class _QuickActionChip extends StatelessWidget {
     );
   }
 }
-
