@@ -20,7 +20,7 @@ async function authenticateToken(req, res, next) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Verify user still exists and is active
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -59,7 +59,7 @@ async function authenticateToken(req, res, next) {
         code: 'TOKEN_EXPIRED'
       });
     }
-    
+
     logger.error('Authentication error:', error);
     return res.status(401).json({
       success: false,
@@ -84,7 +84,7 @@ async function authenticateStudentToken(req, res, next) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     if (decoded.type !== 'student') {
       return res.status(401).json({
         success: false,
@@ -130,7 +130,7 @@ async function authenticateStudentToken(req, res, next) {
         code: 'TOKEN_EXPIRED'
       });
     }
-    
+
     logger.error('Student authentication error:', error);
     return res.status(401).json({
       success: false,
@@ -144,6 +144,7 @@ async function authenticateStudentToken(req, res, next) {
  * @param  {...string} roles - Allowed roles
  */
 function requireRole(...roles) {
+  const allowedRoles = roles.flat();
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
@@ -152,7 +153,7 @@ function requireRole(...roles) {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Insufficient permissions'
@@ -168,7 +169,7 @@ function requireRole(...roles) {
  */
 function requireSchoolAccess(req, res, next) {
   const schoolId = req.params.schoolId || req.body.schoolId || req.query.schoolId;
-  
+
   if (schoolId && req.user.schoolId !== schoolId) {
     return res.status(403).json({
       success: false,
