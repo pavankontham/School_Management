@@ -18,7 +18,7 @@ class PrincipalRepository {
 
   // School Info
   Future<SchoolModel?> getSchoolInfo() async {
-    final response = await _apiService.get('/schools/current');
+    final response = await _apiService.get('schools/current');
     if (response.success && response.data != null) {
       return SchoolModel.fromJson(response.data);
     }
@@ -27,7 +27,7 @@ class PrincipalRepository {
 
   // Dashboard Stats
   Future<DashboardStats?> getDashboardStats() async {
-    final response = await _apiService.get('/dashboard/stats');
+    final response = await _apiService.get('dashboard/stats');
     if (response.success && response.data != null) {
       return DashboardStats.fromJson(response.data);
     }
@@ -35,7 +35,7 @@ class PrincipalRepository {
   }
 
   Future<List<DashboardPostModel>> getDashboardPosts({String? type}) async {
-    final response = await _apiService.get('/dashboard/posts', queryParams: {
+    final response = await _apiService.get('dashboard/posts', queryParams: {
       if (type != null) 'type': type,
     });
     if (response.success && response.data != null) {
@@ -53,7 +53,7 @@ class PrincipalRepository {
     required String type,
     bool isPinned = false,
   }) async {
-    final response = await _apiService.post('/dashboard/posts', data: {
+    final response = await _apiService.post('dashboard/posts', data: {
       'title': title,
       'content': content,
       'type': type,
@@ -73,7 +73,7 @@ class PrincipalRepository {
     bool? isPinned,
     bool? isPublished,
   }) async {
-    final response = await _apiService.put('/dashboard/posts/$id', data: {
+    final response = await _apiService.put('dashboard/posts/$id', data: {
       if (title != null) 'title': title,
       if (content != null) 'content': content,
       if (type != null) 'type': type,
@@ -87,12 +87,12 @@ class PrincipalRepository {
   }
 
   Future<bool> deleteDashboardPost(String id) async {
-    final response = await _apiService.delete('/dashboard/posts/$id');
+    final response = await _apiService.delete('dashboard/posts/$id');
     return response.success;
   }
 
   Future<DashboardPostModel?> getPostById(String postId) async {
-    final response = await _apiService.get('/dashboard/posts/$postId');
+    final response = await _apiService.get('dashboard/posts/$postId');
     if (response.success && response.data != null) {
       return DashboardPostModel.fromJson(response.data);
     }
@@ -101,19 +101,21 @@ class PrincipalRepository {
 
   // Teachers
   Future<List<TeacherModel>> getTeachers({String? search}) async {
-    final response = await _apiService.get('/users', queryParams: {
+    final response = await _apiService.get('users', queryParams: {
+      'role': 'TEACHER', // Always filter for teachers in this section
       if (search != null) 'search': search,
     });
     if (response.success && response.data != null) {
       // Backend returns paginated response: {users: [], pagination: {}}
-      final users = response.data['users'] ?? response.data;
-      return (users as List).map((e) => TeacherModel.fromJson(e)).toList();
+      final data = response.data;
+      final List users = data is Map ? (data['users'] ?? []) : data;
+      return users.map((e) => TeacherModel.fromJson(e)).toList();
     }
     return [];
   }
 
   Future<TeacherModel?> getTeacher(String id) async {
-    final response = await _apiService.get('/users/$id');
+    final response = await _apiService.get('users/$id');
     if (response.success && response.data != null) {
       return TeacherModel.fromJson(response.data);
     }
@@ -129,7 +131,7 @@ class PrincipalRepository {
     List<String>? classIds,
     List<String>? subjectIds,
   }) async {
-    final response = await _apiService.post('/users/teacher', data: {
+    final response = await _apiService.post('users/teacher', data: {
       'firstName': firstName,
       'lastName': lastName,
       'email': email,
@@ -152,7 +154,7 @@ class PrincipalRepository {
     String? phone,
     bool? isActive,
   }) async {
-    final response = await _apiService.put('/users/$id', data: {
+    final response = await _apiService.put('users/$id', data: {
       if (firstName != null) 'firstName': firstName,
       if (lastName != null) 'lastName': lastName,
       if (email != null) 'email': email,
@@ -166,13 +168,13 @@ class PrincipalRepository {
   }
 
   Future<bool> deleteTeacher(String id) async {
-    final response = await _apiService.delete('/users/$id');
+    final response = await _apiService.delete('users/$id');
     return response.success;
   }
 
   // Classes
   Future<List<ClassModel>> getClasses({String? search}) async {
-    final response = await _apiService.get('/classes', queryParams: {
+    final response = await _apiService.get('classes', queryParams: {
       if (search != null) 'search': search,
     });
     if (response.success && response.data != null) {
@@ -184,7 +186,7 @@ class PrincipalRepository {
   }
 
   Future<ClassModel?> getClass(String id) async {
-    final response = await _apiService.get('/classes/$id');
+    final response = await _apiService.get('classes/$id');
     if (response.success && response.data != null) {
       return ClassModel.fromJson(response.data);
     }
@@ -197,7 +199,7 @@ class PrincipalRepository {
     String? section,
     String? academicYear,
   }) async {
-    final response = await _apiService.post('/classes', data: {
+    final response = await _apiService.post('classes', data: {
       'name': name,
       'grade': grade,
       'section': section,
@@ -216,7 +218,7 @@ class PrincipalRepository {
     String? academicYear,
     bool? isActive,
   }) async {
-    final response = await _apiService.put('/classes/$id', data: {
+    final response = await _apiService.put('classes/$id', data: {
       if (name != null) 'name': name,
       if (section != null) 'section': section,
       if (academicYear != null) 'academicYear': academicYear,
@@ -229,13 +231,13 @@ class PrincipalRepository {
   }
 
   Future<bool> deleteClass(String id) async {
-    final response = await _apiService.delete('/classes/$id');
+    final response = await _apiService.delete('classes/$id');
     return response.success;
   }
 
   // Subjects
   Future<List<SubjectModel>> getSubjects({String? classId}) async {
-    final response = await _apiService.get('/subjects', queryParams: {
+    final response = await _apiService.get('subjects', queryParams: {
       if (classId != null) 'classId': classId,
     });
     if (response.success && response.data != null) {
@@ -252,7 +254,7 @@ class PrincipalRepository {
     String? description,
     String? classId,
   }) async {
-    final response = await _apiService.post('/subjects', data: {
+    final response = await _apiService.post('subjects', data: {
       'name': name,
       'code': code,
       'description': description,
@@ -270,7 +272,7 @@ class PrincipalRepository {
     String? description,
     String? teacherId,
   }) async {
-    final response = await _apiService.put('/subjects/$id', data: {
+    final response = await _apiService.put('subjects/$id', data: {
       if (name != null) 'name': name,
       if (description != null) 'description': description,
       if (teacherId != null) 'teacherId': teacherId,
@@ -282,7 +284,7 @@ class PrincipalRepository {
   }
 
   Future<ApiResult<bool>> deleteSubject(String id) async {
-    final response = await _apiService.delete('/subjects/$id');
+    final response = await _apiService.delete('subjects/$id');
     if (response.success) {
       return ApiResult.success(true);
     }
@@ -294,7 +296,7 @@ class PrincipalRepository {
     String? teacherId,
   }) async {
     final response =
-        await _apiService.put('/subjects/$subjectId/assign-teacher', data: {
+        await _apiService.put('subjects/$subjectId/assign-teacher', data: {
       if (teacherId != null) 'teacherId': teacherId,
     });
     if (response.success) {
@@ -308,22 +310,21 @@ class PrincipalRepository {
     String? classId,
     String? search,
   }) async {
-    final response = await _apiService.get('/students', queryParams: {
+    final response = await _apiService.get('students', queryParams: {
       if (classId != null) 'classId': classId,
       if (search != null) 'search': search,
     });
     if (response.success && response.data != null) {
       // Backend returns paginated response: {students: [], pagination: {}}
-      final students = response.data['students'] ?? response.data;
-      return (students as List)
-          .map((e) => StudentDetailModel.fromJson(e))
-          .toList();
+      final data = response.data;
+      final List students = data is Map ? (data['students'] ?? []) : data;
+      return students.map((e) => StudentDetailModel.fromJson(e)).toList();
     }
     return [];
   }
 
   Future<StudentDetailModel?> getStudent(String id) async {
-    final response = await _apiService.get('/students/$id');
+    final response = await _apiService.get('students/$id');
     if (response.success && response.data != null) {
       return StudentDetailModel.fromJson(response.data);
     }
@@ -345,7 +346,7 @@ class PrincipalRepository {
     DateTime? dateOfBirth,
     String? gender,
   }) async {
-    final response = await _apiService.post('/students', data: {
+    final response = await _apiService.post('students', data: {
       'rollNumber': rollNumber,
       'firstName': firstName,
       'lastName': lastName,
@@ -380,7 +381,7 @@ class PrincipalRepository {
     String? classId,
     bool? isActive,
   }) async {
-    final response = await _apiService.put('/students/$id', data: {
+    final response = await _apiService.put('students/$id', data: {
       if (firstName != null) 'firstName': firstName,
       if (lastName != null) 'lastName': lastName,
       if (email != null) 'email': email,
@@ -400,13 +401,13 @@ class PrincipalRepository {
   }
 
   Future<bool> deleteStudent(String id) async {
-    final response = await _apiService.delete('/students/$id');
+    final response = await _apiService.delete('students/$id');
     return response.success;
   }
 
   Future<bool> uploadStudentPhoto(String studentId, File photo) async {
     final response = await _apiService.uploadFile(
-      '/students/$studentId/photo',
+      'students/$studentId/photo',
       photo,
       fieldName: 'photo',
     );
@@ -422,7 +423,7 @@ class PrincipalRepository {
       'photo': await MultipartFile.fromFile(photo.path),
     });
     final response = await _apiService.postMultipart(
-      '/face-recognition/upload-reference',
+      'face-recognition/upload-reference',
       formData,
     );
     if (response.success && response.data != null) {

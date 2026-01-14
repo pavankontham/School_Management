@@ -20,7 +20,7 @@ class TeacherRepository {
 
   // Classes & Subjects
   Future<List<ClassModel>> getMyClasses() async {
-    final response = await _apiService.get('/classes');
+    final response = await _apiService.get('classes');
     if (response.success && response.data != null) {
       return (response.data as List)
           .map((e) => ClassModel.fromJson(e))
@@ -30,7 +30,7 @@ class TeacherRepository {
   }
 
   Future<List<SubjectModel>> getMySubjects({String? classId}) async {
-    final response = await _apiService.get('/subjects', queryParams: {
+    final response = await _apiService.get('subjects', queryParams: {
       if (classId != null) 'classId': classId,
     });
     if (response.success && response.data != null) {
@@ -42,7 +42,7 @@ class TeacherRepository {
   }
 
   Future<List<StudentDetailModel>> getStudentsByClass(String classId) async {
-    final response = await _apiService.get('/students', queryParams: {
+    final response = await _apiService.get('students', queryParams: {
       'classId': classId,
     });
     if (response.success && response.data != null) {
@@ -61,15 +61,15 @@ class TeacherRepository {
     required String subjectId,
     DateTime? date,
   }) async {
-    final response = await _apiService.get('/attendance', queryParams: {
+    final response = await _apiService.get('attendance', queryParams: {
       'classId': classId,
       'subjectId': subjectId,
       if (date != null) 'date': date.toIso8601String().split('T')[0],
     });
     if (response.success && response.data != null) {
-      return (response.data as List)
-          .map((e) => AttendanceModel.fromJson(e))
-          .toList();
+      final data = response.data;
+      final List records = data is Map ? (data['records'] ?? []) : data;
+      return records.map((e) => AttendanceModel.fromJson(e)).toList();
     }
     return [];
   }
@@ -80,7 +80,7 @@ class TeacherRepository {
     required DateTime date,
     required List<Map<String, dynamic>> records,
   }) async {
-    final response = await _apiService.post('/attendance', data: {
+    final response = await _apiService.post('attendance', data: {
       'classId': classId,
       'subjectId': subjectId,
       'date': date.toIso8601String().split('T')[0],
@@ -97,7 +97,7 @@ class TeacherRepository {
     required String classId,
   }) async {
     final response = await _apiService.uploadFile(
-      '/attendance/recognize',
+      'attendance/recognize',
       photo,
       fieldName: 'photo',
       data: {'classId': classId},
@@ -117,16 +117,16 @@ class TeacherRepository {
     String? studentId,
     String? examType,
   }) async {
-    final response = await _apiService.get('/marks', queryParams: {
+    final response = await _apiService.get('marks', queryParams: {
       if (classId != null) 'classId': classId,
       if (subjectId != null) 'subjectId': subjectId,
       if (studentId != null) 'studentId': studentId,
       if (examType != null) 'examType': examType,
     });
     if (response.success && response.data != null) {
-      return (response.data as List)
-          .map((e) => MarksModel.fromJson(e))
-          .toList();
+      final data = response.data;
+      final List marks = data is Map ? (data['marks'] ?? []) : data;
+      return marks.map((e) => MarksModel.fromJson(e)).toList();
     }
     return [];
   }
@@ -138,12 +138,14 @@ class TeacherRepository {
     required DateTime examDate,
     required List<Map<String, dynamic>> marks,
   }) async {
-    final response = await _apiService.post('/marks', data: {
+    final response = await _apiService.post('marks/bulk', data: {
       'subjectId': subjectId,
       'examType': examType,
-      'totalMarks': totalMarks,
+      'examName':
+          '$examType - ${examDate.day}/${examDate.month}/${examDate.year}',
+      'maxMarks': totalMarks,
       'examDate': examDate.toIso8601String(),
-      'marks': marks,
+      'records': marks,
     });
     if (response.success) {
       return ApiResult.success(null);
@@ -153,7 +155,7 @@ class TeacherRepository {
 
   // Remarks
   Future<List<RemarkModel>> getRemarks({String? studentId}) async {
-    final response = await _apiService.get('/remarks', queryParams: {
+    final response = await _apiService.get('remarks', queryParams: {
       if (studentId != null) 'studentId': studentId,
     });
     if (response.success && response.data != null) {
@@ -171,7 +173,7 @@ class TeacherRepository {
     required String description,
     bool isPrivate = false,
   }) async {
-    final response = await _apiService.post('/remarks', data: {
+    final response = await _apiService.post('remarks', data: {
       'studentId': studentId,
       'type': type,
       'title': title,
@@ -186,7 +188,7 @@ class TeacherRepository {
 
   // Quizzes
   Future<List<QuizModel>> getQuizzes({String? subjectId}) async {
-    final response = await _apiService.get('/quizzes', queryParams: {
+    final response = await _apiService.get('quizzes', queryParams: {
       if (subjectId != null) 'subjectId': subjectId,
     });
     if (response.success && response.data != null) {
@@ -200,7 +202,7 @@ class TeacherRepository {
   }
 
   Future<QuizModel?> getQuiz(String id) async {
-    final response = await _apiService.get('/quizzes/$id');
+    final response = await _apiService.get('quizzes/$id');
     if (response.success && response.data != null) {
       return QuizModel.fromJson(response.data);
     }
@@ -222,7 +224,7 @@ class TeacherRepository {
     DateTime? startTime,
     DateTime? endTime,
   }) async {
-    final response = await _apiService.post('/quizzes', data: {
+    final response = await _apiService.post('quizzes', data: {
       'title': title,
       'description': description,
       'subjectId': subjectId,
@@ -253,7 +255,7 @@ class TeacherRepository {
     int? timeLimit,
     bool saveQuiz = false,
   }) async {
-    final response = await _apiService.post('/ai/generate-quiz', data: {
+    final response = await _apiService.post('ai/generate-quiz', data: {
       'topic': topic,
       'subjectId': subjectId,
       'classId': classId,
@@ -274,7 +276,7 @@ class TeacherRepository {
       String? description,
       int? duration,
       bool? isActive}) async {
-    final response = await _apiService.put('/quizzes/$id', data: {
+    final response = await _apiService.put('quizzes/$id', data: {
       if (title != null) 'title': title,
       if (description != null) 'description': description,
       if (duration != null) 'duration': duration,
@@ -287,7 +289,7 @@ class TeacherRepository {
   }
 
   Future<ApiResult<void>> deleteQuiz(String id) async {
-    final response = await _apiService.delete('/quizzes/$id');
+    final response = await _apiService.delete('quizzes/$id');
     if (response.success) {
       return ApiResult.success(null);
     }
@@ -295,7 +297,7 @@ class TeacherRepository {
   }
 
   Future<List<QuizAttemptModel>> getQuizResults(String quizId) async {
-    final response = await _apiService.get('/quizzes/$quizId/results');
+    final response = await _apiService.get('quizzes/$quizId/results');
     if (response.success && response.data != null) {
       return (response.data as List)
           .map((e) => QuizAttemptModel.fromJson(e))
@@ -306,7 +308,7 @@ class TeacherRepository {
 
   // Textbooks
   Future<List<TextbookModel>> getTextbooks({String? subjectId}) async {
-    final response = await _apiService.get('/textbooks', queryParams: {
+    final response = await _apiService.get('textbooks', queryParams: {
       if (subjectId != null) 'subjectId': subjectId,
     });
     if (response.success && response.data != null) {
@@ -327,7 +329,7 @@ class TeacherRepository {
     required String classId,
   }) async {
     final response = await _apiService.uploadFile(
-      '/textbooks',
+      'textbooks',
       file,
       fieldName: 'file',
       data: {
@@ -344,13 +346,13 @@ class TeacherRepository {
   }
 
   Future<bool> deleteTextbook(String id) async {
-    final response = await _apiService.delete('/textbooks/$id');
+    final response = await _apiService.delete('textbooks/$id');
     return response.success;
   }
 
   // Chat
   Future<List<ChatMessageModel>> getChatHistory() async {
-    final response = await _apiService.get('/chat/history');
+    final response = await _apiService.get('chat/history');
     if (response.success && response.data != null) {
       return (response.data as List)
           .map((e) => ChatMessageModel.fromJson(e))
@@ -360,7 +362,7 @@ class TeacherRepository {
   }
 
   Future<ApiResult<String>> sendChatMessage(String message) async {
-    final response = await _apiService.post('/chat/message', data: {
+    final response = await _apiService.post('chat/message', data: {
       'message': message,
     });
     if (response.success && response.data != null) {
@@ -371,7 +373,7 @@ class TeacherRepository {
   }
 
   Future<bool> clearChatHistory() async {
-    final response = await _apiService.delete('/chat/history');
+    final response = await _apiService.delete('chat/history');
     return response.success;
   }
 
@@ -393,7 +395,7 @@ class TeacherRepository {
     });
 
     final response = await _apiService.postMultipart(
-        '/face-recognition/mark-attendance', formData);
+        'face-recognition/mark-attendance', formData);
     if (response.success && response.data != null) {
       return ApiResult.success(response.data);
     }
@@ -406,7 +408,7 @@ class TeacherRepository {
     required List<Map<String, dynamic>> attendance,
   }) async {
     final response =
-        await _apiService.post('/face-recognition/confirm-attendance', data: {
+        await _apiService.post('face-recognition/confirm-attendance', data: {
       'classId': classId,
       'date': date.toIso8601String(),
       'attendance': attendance,
@@ -430,7 +432,7 @@ class TeacherRepository {
     });
 
     final response = await _apiService.postMultipart(
-        '/face-recognition/upload-reference', formData);
+        'face-recognition/upload-reference', formData);
     if (response.success) {
       return ApiResult.success(null);
     }

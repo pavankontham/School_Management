@@ -39,13 +39,13 @@ class TeacherModel extends Equatable {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      subjects: json['subjects'] != null
-          ? (json['subjects'] as List)
+      subjects: (json['subjects'] ?? json['teacherSubjects']) != null
+          ? ((json['subjects'] ?? json['teacherSubjects']) as List)
               .map((e) => SubjectAssignment.fromJson(e))
               .toList()
           : null,
-      classes: json['classes'] != null
-          ? (json['classes'] as List)
+      classes: (json['classes'] ?? json['teacherClasses']) != null
+          ? ((json['classes'] ?? json['teacherClasses']) as List)
               .map((e) => ClassAssignment.fromJson(e))
               .toList()
           : null,
@@ -85,12 +85,16 @@ class SubjectAssignment extends Equatable {
   });
 
   factory SubjectAssignment.fromJson(Map<String, dynamic> json) {
+    // Backend returns either direct fields or a nested 'subject'/'class' object
+    final subject = json['subject'] as Map<String, dynamic>?;
+    final cls = json['class'] as Map<String, dynamic>?;
+
     return SubjectAssignment(
-      id: json['id'],
-      subjectId: json['subjectId'] ?? json['subject']?['id'] ?? '',
-      subjectName: json['subjectName'] ?? json['subject']?['name'] ?? '',
-      classId: json['classId'] ?? json['class']?['id'] ?? '',
-      className: json['className'] ?? json['class']?['name'] ?? '',
+      id: json['id'] ?? '',
+      subjectId: json['subjectId'] ?? subject?['id'] ?? '',
+      subjectName: json['subjectName'] ?? subject?['name'] ?? '',
+      classId: json['classId'] ?? cls?['id'] ?? '',
+      className: json['className'] ?? cls?['name'] ?? '',
     );
   }
 
@@ -112,11 +116,17 @@ class ClassAssignment extends Equatable {
   });
 
   factory ClassAssignment.fromJson(Map<String, dynamic> json) {
+    // Backend returns either direct fields or a nested 'class' object
+    final cls = json['class'] as Map<String, dynamic>?;
+
     return ClassAssignment(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      section: json['section'],
-      studentCount: json['studentCount'] ?? json['_count']?['students'] ?? 0,
+      id: json['id'] ?? cls?['id'] ?? '',
+      name: json['name'] ?? cls?['name'] ?? '',
+      section: json['section'] ?? cls?['section'],
+      studentCount: json['studentCount'] ??
+          json['_count']?['students'] ??
+          cls?['_count']?['students'] ??
+          0,
     );
   }
 

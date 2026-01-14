@@ -198,10 +198,11 @@ class QuizAttemptNotifier extends StateNotifier<QuizAttemptState> {
   }
 
   Future<bool> submitQuiz() async {
-    if (state.answers.isEmpty) return false;
+    if (state.answers.isEmpty || state.result?.attemptId == null) return false;
 
     state = state.copyWith(isLoading: true, error: null);
-    final result = await _repository.submitQuiz(_quizId, state.answers);
+    final result =
+        await _repository.submitQuiz(state.result!.attemptId, state.answers);
 
     if (result.success && result.data != null) {
       state = state.copyWith(

@@ -244,7 +244,7 @@ class TextbookModel extends Equatable {
       subjectName: json['subject']?['name'] ?? json['subjectName'],
       classId: json['classId'] ?? '',
       className: json['class']?['name'] ?? json['className'],
-      filePath: json['filePath'] ?? '',
+      filePath: json['fileUrl'] ?? json['filePath'] ?? '',
       fileType: json['fileType'],
       fileSize: json['fileSize'],
       uploadedById: json['uploadedById'] ?? '',

@@ -76,7 +76,7 @@ class ApiService {
       if (refreshToken == null) return false;
 
       final response = await Dio().post(
-        '${AppConfig.baseUrl}/auth/refresh',
+        '${AppConfig.baseUrl}auth/refresh',
         data: {'refreshToken': refreshToken},
       );
 

@@ -10,13 +10,13 @@ class AppConfig {
   // Local backend URL (change to your local IP when testing on physical device)
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:3000/api/v1',
+    defaultValue: 'https://school-management-api-fxxl.onrender.com/api/v1/',
   );
 
   // Face recognition service (deploy separately if needed)
   static const String faceRecognitionUrl = String.fromEnvironment(
     'FACE_RECOGNITION_URL',
-    defaultValue: 'http://localhost:3000',
+    defaultValue: 'https://school-management-api-fxxl.onrender.com/',
   );
 
   // Timeouts

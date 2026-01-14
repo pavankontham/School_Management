@@ -16,13 +16,20 @@ const prisma = new PrismaClient();
  * @access  Private (Principal only)
  */
 router.get('/', requireRole(['PRINCIPAL', 'TEACHER']), asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, role, isActive } = req.query;
+  const { page = 1, limit = 20, role, isActive, search } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   const where = {
     schoolId: req.user.schoolId,
     ...(role && { role }),
-    ...(isActive !== undefined && { isActive: isActive === 'true' })
+    ...(isActive !== undefined && { isActive: isActive === 'true' }),
+    ...(search && {
+      OR: [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ]
+    })
   };
 
   const [users, total] = await Promise.all([

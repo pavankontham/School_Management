@@ -262,17 +262,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     );
   }
 
-  void _loadStudents() {
+  Future<void> _loadStudents() async {
     if (_selectedClassId == null) return;
 
-    ref.read(classStudentsProvider(_selectedClassId!)).whenData((students) {
+    try {
+      final students =
+          await ref.read(classStudentsProvider(_selectedClassId!).future);
       if (!_isInitialized) {
         ref
             .read(attendanceNotifierProvider.notifier)
             .initializeRecords(students);
         _isInitialized = true;
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading students: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildAttendanceList(List<AttendanceRecord> records) {

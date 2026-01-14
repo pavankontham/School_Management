@@ -827,7 +827,7 @@ class _CreateQuizFormState extends ConsumerState<_CreateQuizForm> {
                 if (questionController.text.isEmpty) return;
                 final question = {
                   'question': questionController.text,
-                  'type': 'MULTIPLE_CHOICE',
+                  'type': 'MCQ',
                   'options': [
                     option1Controller.text,
                     option2Controller.text,

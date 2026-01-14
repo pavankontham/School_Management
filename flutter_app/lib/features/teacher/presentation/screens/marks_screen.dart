@@ -204,9 +204,12 @@ class _EnterMarksTabState extends ConsumerState<_EnterMarksTab> {
                         items: const [
                           DropdownMenuItem(value: 'TEST', child: Text('Test')),
                           DropdownMenuItem(value: 'QUIZ', child: Text('Quiz')),
-                          DropdownMenuItem(value: 'MIDTERM', child: Text('Midterm')),
-                          DropdownMenuItem(value: 'FINAL', child: Text('Final')),
-                          DropdownMenuItem(value: 'ASSIGNMENT', child: Text('Assignment')),
+                          DropdownMenuItem(
+                              value: 'MIDTERM', child: Text('Midterm')),
+                          DropdownMenuItem(
+                              value: 'FINAL', child: Text('Final')),
+                          DropdownMenuItem(
+                              value: 'ASSIGNMENT', child: Text('Assignment')),
                         ],
                         onChanged: (value) {
                           if (value != null) setState(() => _examType = value);
@@ -252,7 +255,8 @@ class _EnterMarksTabState extends ConsumerState<_EnterMarksTab> {
                                 children: [
                                   Text(
                                     '${student.firstName} ${student.lastName}',
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600),
                                   ),
                                   Text(
                                     'Roll: ${student.rollNumber}',
@@ -281,7 +285,9 @@ class _EnterMarksTabState extends ConsumerState<_EnterMarksTab> {
                                 validator: (value) {
                                   if (value != null && value.isNotEmpty) {
                                     final marks = double.tryParse(value);
-                                    if (marks == null || marks < 0 || marks > _totalMarks) {
+                                    if (marks == null ||
+                                        marks < 0 ||
+                                        marks > _totalMarks) {
                                       return 'Invalid';
                                     }
                                   }
@@ -328,26 +334,27 @@ class _EnterMarksTabState extends ConsumerState<_EnterMarksTab> {
       if (value.isNotEmpty) {
         marks.add({
           'studentId': entry.key,
-          'marksObtained': double.parse(value),
+          'obtainedMarks': double.parse(value),
         });
       }
     }
 
     if (marks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter marks for at least one student')),
+        const SnackBar(
+            content: Text('Please enter marks for at least one student')),
       );
       setState(() => _isSubmitting = false);
       return;
     }
 
     final result = await ref.read(teacherRepositoryProvider).submitMarks(
-      subjectId: widget.subjectId!,
-      examType: _examType,
-      totalMarks: _totalMarks,
-      examDate: _examDate,
-      marks: marks,
-    );
+          subjectId: widget.subjectId!,
+          examType: _examType,
+          totalMarks: _totalMarks,
+          examDate: _examDate,
+          marks: marks,
+        );
 
     setState(() => _isSubmitting = false);
 
@@ -416,32 +423,36 @@ class _ViewMarksTab extends ConsumerWidget {
               child: ExpansionTile(
                 title: Text(examType),
                 subtitle: Text('${examMarks.length} students'),
-                children: examMarks.map((mark) => ListTile(
-                  leading: UserAvatar(name: mark.studentName, size: 36),
-                  title: Text(mark.studentName),
-                  subtitle: Text('Roll: ${mark.studentRollNumber ?? 'N/A'}'),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${mark.marksObtained.toStringAsFixed(0)}/${mark.totalMarks.toStringAsFixed(0)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '${mark.percentage.toStringAsFixed(1)}%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: mark.percentage >= 60
-                              ? AppColors.success
-                              : mark.percentage >= 40
-                                  ? AppColors.warning
-                                  : AppColors.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                )).toList(),
+                children: examMarks
+                    .map((mark) => ListTile(
+                          leading: UserAvatar(name: mark.studentName, size: 36),
+                          title: Text(mark.studentName),
+                          subtitle:
+                              Text('Roll: ${mark.studentRollNumber ?? 'N/A'}'),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${mark.marksObtained.toStringAsFixed(0)}/${mark.totalMarks.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                '${mark.percentage.toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: mark.percentage >= 60
+                                      ? AppColors.success
+                                      : mark.percentage >= 40
+                                          ? AppColors.warning
+                                          : AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
               ),
             );
           },
@@ -452,4 +463,3 @@ class _ViewMarksTab extends ConsumerWidget {
     );
   }
 }
-

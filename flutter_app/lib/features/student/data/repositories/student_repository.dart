@@ -18,7 +18,7 @@ class StudentRepository {
 
   // Profile
   Future<Map<String, dynamic>?> getProfile() async {
-    final response = await _apiService.get('/student/profile');
+    final response = await _apiService.get('student/profile');
     if (response.success && response.data != null) {
       return response.data;
     }
@@ -27,7 +27,7 @@ class StudentRepository {
 
   // Attendance
   Future<StudentAttendanceData> getAttendance({int? month, int? year}) async {
-    final response = await _apiService.get('/student/attendance', queryParams: {
+    final response = await _apiService.get('student/attendance', queryParams: {
       if (month != null) 'month': month.toString(),
       if (year != null) 'year': year.toString(),
     });
@@ -39,7 +39,7 @@ class StudentRepository {
 
   // Marks
   Future<StudentMarksData> getMarks() async {
-    final response = await _apiService.get('/student/marks');
+    final response = await _apiService.get('student/marks');
     if (response.success && response.data != null) {
       return StudentMarksData.fromJson(response.data);
     }
@@ -48,7 +48,7 @@ class StudentRepository {
 
   // Report Card
   Future<Map<String, dynamic>?> getReportCard() async {
-    final response = await _apiService.get('/student/report-card');
+    final response = await _apiService.get('student/report-card');
     if (response.success && response.data != null) {
       return response.data;
     }
@@ -57,7 +57,7 @@ class StudentRepository {
 
   // Quizzes
   Future<List<StudentQuizModel>> getQuizzes() async {
-    final response = await _apiService.get('/student/quizzes');
+    final response = await _apiService.get('student/quizzes');
     if (response.success && response.data != null) {
       return (response.data as List)
           .map((e) => StudentQuizModel.fromJson(e))
@@ -67,7 +67,7 @@ class StudentRepository {
   }
 
   Future<StudentQuizModel?> getQuiz(String id) async {
-    final response = await _apiService.get('/student/quizzes/$id');
+    final response = await _apiService.get('student/quizzes/$id');
     if (response.success && response.data != null) {
       return StudentQuizModel.fromJson(response.data);
     }
@@ -75,7 +75,7 @@ class StudentRepository {
   }
 
   Future<ApiResult<QuizAttemptResult>> startQuiz(String quizId) async {
-    final response = await _apiService.post('/student/quizzes/$quizId/start');
+    final response = await _apiService.post('student/quizzes/$quizId/start');
     if (response.success && response.data != null) {
       return ApiResult.success(QuizAttemptResult.fromJson(response.data));
     }
@@ -83,11 +83,11 @@ class StudentRepository {
   }
 
   Future<ApiResult<QuizAttemptResult>> submitQuiz(
-    String quizId,
+    String attemptId,
     Map<String, String> answers,
   ) async {
     final response = await _apiService.post(
-      '/student/quizzes/$quizId/submit',
+      'student/quizzes/attempt/$attemptId/submit',
       data: {'answers': answers},
     );
     if (response.success && response.data != null) {
@@ -98,7 +98,7 @@ class StudentRepository {
 
   // Textbooks
   Future<List<StudentTextbookModel>> getTextbooks() async {
-    final response = await _apiService.get('/student/textbooks');
+    final response = await _apiService.get('student/textbooks');
     if (response.success && response.data != null) {
       return (response.data as List)
           .map((e) => StudentTextbookModel.fromJson(e))
@@ -109,7 +109,7 @@ class StudentRepository {
 
   // Chat
   Future<List<ChatMessageModel>> getChatHistory() async {
-    final response = await _apiService.get('/chat/student/history');
+    final response = await _apiService.get('chat/student/history');
     if (response.success && response.data != null) {
       final data = response.data;
       if (data['messages'] != null) {
@@ -122,7 +122,7 @@ class StudentRepository {
   }
 
   Future<ApiResult<ChatResponse>> sendChatMessage(String message) async {
-    final response = await _apiService.post('/chat/student/message', data: {
+    final response = await _apiService.post('chat/student/message', data: {
       'message': message,
     });
     if (response.success && response.data != null) {
