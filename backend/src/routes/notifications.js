@@ -1,25 +1,13 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { body, param, query, validationResult } = require('express-validator');
-const nodemailer = require('nodemailer');
-
+const prisma = new PrismaClient();
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { requireRole } = require('../middleware/auth');
 const logger = require('../utils/logger');
+const { sendEmail } = require('../services/emailService');
 
 const router = express.Router();
-const prisma = new PrismaClient();
-
-// Email transporter
-const emailTransporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
 
 // Mock SMS sender (replace with Twilio in production)
 async function sendSMS(to, message) {
@@ -245,8 +233,7 @@ async function sendNotifications(notification, channels, users, students, title,
       for (const user of users) {
         if (user.email) {
           try {
-            await emailTransporter.sendMail({
-              from: process.env.EMAIL_FROM,
+            await sendEmail({
               to: user.email,
               subject: title,
               text: message,
@@ -264,8 +251,7 @@ async function sendNotifications(notification, channels, users, students, title,
         const email = student.parentEmail || student.email;
         if (email) {
           try {
-            await emailTransporter.sendMail({
-              from: process.env.EMAIL_FROM,
+            await sendEmail({
               to: email,
               subject: title,
               text: message

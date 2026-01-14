@@ -43,6 +43,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# API Key Authentication Middleware
+from fastapi import Header, HTTPException as FastAPIHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Skip auth for health check
+        if request.url.path == "/health":
+            return await call_next(request)
+        
+        # Check for API key
+        api_key = request.headers.get("X-API-Key")
+        expected_key = os.getenv("API_KEY")
+        
+        if not expected_key:
+            logger.warning("API_KEY not set in environment variables - authentication disabled!")
+        elif not api_key:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "API key is missing"}
+            )
+        elif api_key != expected_key:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Invalid API key"}
+            )
+        
+        response = await call_next(request)
+        return response
+
+from fastapi.responses import JSONResponse
+
+# Add API key middleware
+app.add_middleware(APIKeyMiddleware)
+
 # Models
 class KnownFace(BaseModel):
     id: str

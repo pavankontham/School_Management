@@ -1,6 +1,3 @@
-// Prisma Schema for Multi-School Management System
-// PostgreSQL Database
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,220 +7,223 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== SCHOOL ====================
 model School {
-  id          String   @id @default(uuid())
-  name        String
-  address     String
-  city        String
-  state       String
-  country     String
-  postalCode  String
-  phone       String
-  email       String   @unique
-  website     String?
-  logo        String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  users           User[]
-  classes         Class[]
-  subjects        Subject[]
-  students        Student[]
-  textbooks       Textbook[]
-  quizzes         Quiz[]
-  notifications   Notification[]
-  dashboardPosts  DashboardPost[]
-  auditLogs       AuditLog[]
+  id             String          @id @default(uuid())
+  name           String
+  address        String
+  city           String
+  state          String
+  country        String
+  postalCode     String
+  phone          String
+  email          String          @unique
+  website        String?
+  logo           String?
+  gradingScale   Json?           // School-specific grading configuration
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  auditLogs      AuditLog[]
+  classes        Class[]
+  dashboardPosts DashboardPost[]
+  notifications  Notification[]
+  quizzes        Quiz[]
+  students       Student[]
+  subjects       Subject[]
+  textbooks      Textbook[]
+  users          User[]
 
   @@index([email])
   @@index([isActive])
 }
 
-// ==================== USER (Principal/Teacher) ====================
 model User {
-  id              String   @id @default(uuid())
-  schoolId        String
-  email           String   @unique
-  phone           String?
-  password        String
-  firstName       String
-  lastName        String
-  role            UserRole
-  profileImage    String?
-  isActive        Boolean  @default(true)
-  lastLogin       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  refreshTokens       RefreshToken[]
-  teacherClasses      TeacherClass[]
-  teacherSubjects     TeacherSubject[]
-  attendanceRecords   Attendance[]
-  marksRecords        Marks[]
-  remarks             Remark[]
-  quizzesCreated      Quiz[]
-  chatMessages        ChatMessage[]
-  notificationsSent   Notification[]      @relation("SentNotifications")
+  id                    String             @id @default(uuid())
+  schoolId              String
+  email                 String             @unique
+  phone                 String?
+  password              String
+  firstName             String
+  lastName              String
+  role                  UserRole
+  profileImage          String?
+  isActive              Boolean            @default(true)
+  lastLogin             DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  attendanceRecords     Attendance[]
+  auditLogs             AuditLog[]
+  chatMessages          ChatMessage[]
+  dashboardPosts        DashboardPost[]
+  marksRecords          Marks[]
+  notificationsSent     Notification[]     @relation("SentNotifications")
+  quizzesCreated        Quiz[]
+  refreshTokens         RefreshToken[]
+  remarks               Remark[]
+  teacherClasses        TeacherClass[]
+  teacherSubjects       TeacherSubject[]
+  classSubjects         ClassSubject[]     // Per-class subject assignments
+  school                School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   notificationsReceived UserNotification[]
-  dashboardPosts      DashboardPost[]
-  auditLogs           AuditLog[]
 
   @@index([schoolId])
   @@index([email])
   @@index([role])
 }
 
-enum UserRole {
-  PRINCIPAL
-  TEACHER
-}
-
-// ==================== REFRESH TOKEN ====================
 model RefreshToken {
-  id          String   @id @default(uuid())
-  userId      String
-  token       String   @unique
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
 }
 
-// ==================== CLASS ====================
-model Class {
-  id          String   @id @default(uuid())
-  schoolId    String
-  name        String
-  section     String?
-  grade       String
-  academicYear String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model StudentRefreshToken {
+  id        String   @id @default(uuid())
+  studentId String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  // Relations
-  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  students        Student[]
-  teacherClasses  TeacherClass[]
-  subjects        ClassSubject[]
-  attendances     Attendance[]
-  quizzes         Quiz[]
-  notifications   Notification[]
+  @@index([studentId])
+  @@index([token])
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model Class {
+  id             String         @id @default(uuid())
+  schoolId       String
+  name           String
+  section        String?
+  grade          String
+  academicYear   String
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  attendances    Attendance[]
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subjects       ClassSubject[]
+  notifications  Notification[]
+  quizzes        Quiz[]
+  students       Student[]
+  teacherClasses TeacherClass[]
 
   @@unique([schoolId, name, section, academicYear])
   @@index([schoolId])
   @@index([grade])
 }
 
-// ==================== SUBJECT ====================
 model Subject {
-  id          String   @id @default(uuid())
-  schoolId    String
-  name        String
-  code        String
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id              String           @id @default(uuid())
+  schoolId        String
+  name            String
+  code            String
+  description     String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   classSubjects   ClassSubject[]
+  marks           Marks[]
+  notifications   Notification[]
+  quizzes         Quiz[]
+  school          School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacherSubjects TeacherSubject[]
   textbooks       Textbook[]
-  marks           Marks[]
-  quizzes         Quiz[]
-  notifications   Notification[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
 }
 
-// ==================== CLASS-SUBJECT MAPPING ====================
 model ClassSubject {
   id        String   @id @default(uuid())
   classId   String
   subjectId String
+  teacherId String?  // Teacher assigned to this subject for this specific class
   createdAt DateTime @default(now())
-
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher   User?    @relation(fields: [teacherId], references: [id], onDelete: SetNull)
 
   @@unique([classId, subjectId])
   @@index([classId])
   @@index([subjectId])
+  @@index([teacherId])
 }
 
-// ==================== TEACHER-CLASS MAPPING ====================
 model TeacherClass {
   id        String   @id @default(uuid())
   userId    String
   classId   String
   createdAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, classId])
   @@index([userId])
   @@index([classId])
 }
 
-// ==================== TEACHER-SUBJECT MAPPING ====================
 model TeacherSubject {
   id        String   @id @default(uuid())
   userId    String
   subjectId String
   createdAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, subjectId])
   @@index([userId])
   @@index([subjectId])
 }
 
-// ==================== STUDENT ====================
 model Student {
-  id              String   @id @default(uuid())
-  schoolId        String
-  classId         String
-  rollNumber      String
-  firstName       String
-  lastName        String
-  email           String?
-  phone           String?
-  parentName      String
-  parentPhone     String
-  parentEmail     String?
-  address         String?
-  dateOfBirth     DateTime?
-  gender          Gender?
-  bloodGroup      String?
-  profileImage    String?
-  faceEncoding    String?  // Encrypted face encoding for attendance
-  password        String   // For student login
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class               Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
-  attendances         Attendance[]
-  marks               Marks[]
-  remarks             Remark[]
-  quizAttempts        QuizAttempt[]
-  chatMessages        StudentChatMessage[]
+  id                    String                @id @default(uuid())
+  schoolId              String
+  classId               String
+  rollNumber            String
+  firstName             String
+  lastName              String
+  email                 String?
+  phone                 String?
+  parentName            String
+  parentPhone           String
+  parentEmail           String?
+  address               String?
+  dateOfBirth           DateTime?
+  gender                Gender?
+  bloodGroup            String?
+  profileImage          String?
+  faceEncoding          String?
+  password              String
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  attendances           Attendance[]
+  marks                 Marks[]
+  quizAttempts          QuizAttempt[]
+  refreshTokens         StudentRefreshToken[]
+  remarks               Remark[]
+  class                 Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school                School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  chatMessages          StudentChatMessage[]
   notificationsReceived StudentNotification[]
 
   @@unique([schoolId, classId, rollNumber])
@@ -232,30 +232,22 @@ model Student {
   @@index([rollNumber])
 }
 
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
-
-// ==================== ATTENDANCE ====================
 model Attendance {
-  id          String           @id @default(uuid())
-  schoolId    String
-  classId     String
-  studentId   String
-  teacherId   String
-  date        DateTime
-  status      AttendanceStatus
-  method      AttendanceMethod @default(MANUAL)
-  confidence  Float?           // Face recognition confidence
-  remarks     String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  id         String           @id @default(uuid())
+  schoolId   String
+  classId    String
+  studentId  String
+  teacherId  String
+  date       DateTime
+  status     AttendanceStatus
+  method     AttendanceMethod @default(MANUAL)
+  confidence Float?
+  remarks    String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  class      Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student    Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher    User             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, date])
   @@index([schoolId])
@@ -264,56 +256,31 @@ model Attendance {
   @@index([date])
 }
 
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-  EXCUSED
-}
-
-enum AttendanceMethod {
-  MANUAL
-  FACE_RECOGNITION
-}
-
-// ==================== MARKS ====================
 model Marks {
-  id          String   @id @default(uuid())
-  schoolId    String
-  studentId   String
-  subjectId   String
-  teacherId   String
-  examType    ExamType
-  examName    String
-  maxMarks    Float
+  id            String   @id @default(uuid())
+  schoolId      String
+  studentId     String
+  subjectId     String
+  teacherId     String
+  examType      ExamType
+  examName      String
+  maxMarks      Float
   obtainedMarks Float
-  percentage  Float
-  grade       String?
-  remarks     String?
-  examDate    DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacher User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  percentage    Float
+  grade         String?
+  remarks       String?
+  examDate      DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher       User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([studentId])
   @@index([subjectId])
 }
 
-enum ExamType {
-  UNIT_TEST
-  MIDTERM
-  FINAL
-  ASSIGNMENT
-  PROJECT
-  QUIZ
-  OTHER
-}
-
-// ==================== REMARKS ====================
 model Remark {
   id          String     @id @default(uuid())
   schoolId    String
@@ -324,22 +291,13 @@ model Remark {
   description String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  student     Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher     User       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([studentId])
 }
 
-enum RemarkType {
-  POSITIVE
-  NEGATIVE
-  NEUTRAL
-  IMPROVEMENT
-}
-
-// ==================== TEXTBOOK ====================
 model Textbook {
   id          String   @id @default(uuid())
   schoolId    String
@@ -354,66 +312,282 @@ model Textbook {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([subjectId])
 }
 
-// ==================== QUIZ ====================
 model Quiz {
-  id              String    @id @default(uuid())
-  schoolId        String
-  classId         String
-  subjectId       String
-  teacherId       String
-  title           String
-  description     String?
-  timeLimit       Int?      // in minutes
-  maxAttempts     Int       @default(1)
-  randomizeQuestions Boolean @default(false)
-  randomizeOptions Boolean  @default(false)
-  showResults     Boolean   @default(true)
-  passingScore    Float?
-  startTime       DateTime?
-  endTime         DateTime?
-  isAIGenerated   Boolean   @default(false)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class     Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject   Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacher   User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  questions QuizQuestion[]
-  attempts  QuizAttempt[]
+  id                 String         @id @default(uuid())
+  schoolId           String
+  classId            String
+  subjectId          String
+  teacherId          String
+  title              String
+  description        String?
+  timeLimit          Int?
+  maxAttempts        Int            @default(1)
+  randomizeQuestions Boolean        @default(false)
+  randomizeOptions   Boolean        @default(false)
+  showResults        Boolean        @default(true)
+  passingScore       Float?
+  startTime          DateTime?
+  endTime            DateTime?
+  isAIGenerated      Boolean        @default(false)
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  class              Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school             School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject            Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher            User           @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  attempts           QuizAttempt[]
+  questions          QuizQuestion[]
 
   @@index([schoolId])
   @@index([classId])
   @@index([subjectId])
 }
 
-// ==================== QUIZ QUESTION ====================
 model QuizQuestion {
-  id            String       @id @default(uuid())
+  id            String              @id @default(uuid())
   quizId        String
   questionText  String
   questionType  QuestionType
-  options       Json?        // Array of options for MCQ
+  options       Json?
   correctAnswer String
   explanation   String?
-  points        Float        @default(1)
+  points        Float               @default(1)
   orderIndex    Int
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  quiz    Quiz                  @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  answers QuizAttemptAnswer[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  answers       QuizAttemptAnswer[]
+  quiz          Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
   @@index([quizId])
+}
+
+model QuizAttempt {
+  id          String              @id @default(uuid())
+  quizId      String
+  studentId   String
+  startedAt   DateTime            @default(now())
+  submittedAt DateTime?
+  score       Float?
+  percentage  Float?
+  isPassed    Boolean?
+  createdAt   DateTime            @default(now())
+  quiz        Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers     QuizAttemptAnswer[]
+
+  @@index([quizId])
+  @@index([studentId])
+}
+
+model QuizAttemptAnswer {
+  id         String       @id @default(uuid())
+  attemptId  String
+  questionId String
+  answer     String
+  isCorrect  Boolean
+  points     Float        @default(0)
+  createdAt  DateTime     @default(now())
+  attempt    QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  schoolId  String
+  role      ChatRole
+  content   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([createdAt])
+}
+
+model StudentChatMessage {
+  id        String   @id @default(uuid())
+  studentId String
+  schoolId  String
+  role      ChatRole
+  content   String
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id                String                @id @default(uuid())
+  schoolId          String
+  senderId          String
+  title             String
+  message           String
+  type              NotificationType
+  targetType        NotificationTarget
+  classId           String?
+  subjectId         String?
+  priority          NotificationPriority  @default(NORMAL)
+  channels          Json
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  status            NotificationStatus    @default(PENDING)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  class             Class?                @relation(fields: [classId], references: [id])
+  school            School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sender            User                  @relation("SentNotifications", fields: [senderId], references: [id], onDelete: Cascade)
+  subject           Subject?              @relation(fields: [subjectId], references: [id])
+  deliveryLogs      NotificationLog[]
+  studentRecipients StudentNotification[]
+  userRecipients    UserNotification[]
+
+  @@index([schoolId])
+  @@index([senderId])
+  @@index([status])
+}
+
+model UserNotification {
+  id             String       @id @default(uuid())
+  notificationId String
+  userId         String
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+  @@index([isRead])
+}
+
+model StudentNotification {
+  id             String       @id @default(uuid())
+  notificationId String
+  studentId      String
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, studentId])
+  @@index([studentId])
+  @@index([isRead])
+}
+
+model NotificationLog {
+  id             String       @id @default(uuid())
+  notificationId String
+  channel        String
+  recipientType  String
+  recipientId    String
+  status         String
+  errorMessage   String?
+  sentAt         DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([recipientId])
+}
+
+model DashboardPost {
+  id          String    @id @default(uuid())
+  schoolId    String
+  authorId    String
+  title       String
+  content     String
+  type        PostType
+  mediaUrls   Json?
+  eventDate   DateTime? // For EVENT type posts - when the event occurs
+  isPinned    Boolean   @default(false)
+  isPublished Boolean   @default(true)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([authorId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([eventDate])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  schoolId   String
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+enum UserRole {
+  PRINCIPAL
+  TEACHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum AttendanceMethod {
+  MANUAL
+  FACE_RECOGNITION
+}
+
+enum ExamType {
+  UNIT_TEST
+  MIDTERM
+  FINAL
+  ASSIGNMENT
+  PROJECT
+  QUIZ
+  OTHER
+}
+
+enum RemarkType {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+  IMPROVEMENT
 }
 
 enum QuestionType {
@@ -423,110 +597,9 @@ enum QuestionType {
   FILL_BLANK
 }
 
-// ==================== QUIZ ATTEMPT ====================
-model QuizAttempt {
-  id          String    @id @default(uuid())
-  quizId      String
-  studentId   String
-  startedAt   DateTime  @default(now())
-  submittedAt DateTime?
-  score       Float?
-  percentage  Float?
-  isPassed    Boolean?
-  createdAt   DateTime  @default(now())
-
-  quiz    Quiz                  @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  student Student               @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  answers QuizAttemptAnswer[]
-
-  @@index([quizId])
-  @@index([studentId])
-}
-
-// ==================== QUIZ ATTEMPT ANSWER ====================
-model QuizAttemptAnswer {
-  id          String   @id @default(uuid())
-  attemptId   String
-  questionId  String
-  answer      String
-  isCorrect   Boolean
-  points      Float    @default(0)
-  createdAt   DateTime @default(now())
-
-  attempt  QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@unique([attemptId, questionId])
-  @@index([attemptId])
-}
-
-// ==================== CHAT MESSAGE (Teacher) ====================
-model ChatMessage {
-  id        String   @id @default(uuid())
-  userId    String
-  schoolId  String
-  role      ChatRole
-  content   String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([schoolId])
-  @@index([createdAt])
-}
-
-// ==================== STUDENT CHAT MESSAGE ====================
-model StudentChatMessage {
-  id        String   @id @default(uuid())
-  studentId String
-  schoolId  String
-  role      ChatRole
-  content   String
-  createdAt DateTime @default(now())
-
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@index([studentId])
-  @@index([schoolId])
-  @@index([createdAt])
-}
-
 enum ChatRole {
   USER
   ASSISTANT
-}
-
-// ==================== NOTIFICATION ====================
-model Notification {
-  id          String           @id @default(uuid())
-  schoolId    String
-  senderId    String
-  title       String
-  message     String
-  type        NotificationType
-  targetType  NotificationTarget
-  classId     String?
-  subjectId   String?
-  priority    NotificationPriority @default(NORMAL)
-  channels    Json             // Array of channels: EMAIL, SMS, IN_APP
-  scheduledAt DateTime?
-  sentAt      DateTime?
-  status      NotificationStatus @default(PENDING)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  sender          User                @relation("SentNotifications", fields: [senderId], references: [id], onDelete: Cascade)
-  class           Class?              @relation(fields: [classId], references: [id])
-  subject         Subject?            @relation(fields: [subjectId], references: [id])
-  userRecipients  UserNotification[]
-  studentRecipients StudentNotification[]
-  deliveryLogs    NotificationLog[]
-
-  @@index([schoolId])
-  @@index([senderId])
-  @@index([status])
 }
 
 enum NotificationType {
@@ -564,81 +637,6 @@ enum NotificationStatus {
   CANCELLED
 }
 
-// ==================== USER NOTIFICATION ====================
-model UserNotification {
-  id             String   @id @default(uuid())
-  notificationId String
-  userId         String
-  isRead         Boolean  @default(false)
-  readAt         DateTime?
-  createdAt      DateTime @default(now())
-
-  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([notificationId, userId])
-  @@index([userId])
-  @@index([isRead])
-}
-
-// ==================== STUDENT NOTIFICATION ====================
-model StudentNotification {
-  id             String   @id @default(uuid())
-  notificationId String
-  studentId      String
-  isRead         Boolean  @default(false)
-  readAt         DateTime?
-  createdAt      DateTime @default(now())
-
-  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([notificationId, studentId])
-  @@index([studentId])
-  @@index([isRead])
-}
-
-// ==================== NOTIFICATION LOG ====================
-model NotificationLog {
-  id             String   @id @default(uuid())
-  notificationId String
-  channel        String   // EMAIL, SMS, IN_APP
-  recipientType  String   // USER, STUDENT
-  recipientId    String
-  status         String   // SENT, FAILED, DELIVERED
-  errorMessage   String?
-  sentAt         DateTime @default(now())
-
-  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-
-  @@index([notificationId])
-  @@index([recipientId])
-}
-
-// ==================== DASHBOARD POST ====================
-model DashboardPost {
-  id          String   @id @default(uuid())
-  schoolId    String
-  authorId    String
-  title       String
-  content     String
-  type        PostType
-  mediaUrls   Json?    // Array of media URLs
-  isPinned    Boolean  @default(false)
-  isPublished Boolean  @default(true)
-  publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([schoolId])
-  @@index([authorId])
-  @@index([type])
-  @@index([createdAt])
-}
-
 enum PostType {
   UPDATE
   EVENT
@@ -646,27 +644,3 @@ enum PostType {
   ANNOUNCEMENT
   ACHIEVEMENT
 }
-
-// ==================== AUDIT LOG ====================
-model AuditLog {
-  id          String   @id @default(uuid())
-  schoolId    String
-  userId      String
-  action      String
-  entityType  String
-  entityId    String
-  oldValue    Json?
-  newValue    Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([schoolId])
-  @@index([userId])
-  @@index([entityType])
-  @@index([createdAt])
-}
-

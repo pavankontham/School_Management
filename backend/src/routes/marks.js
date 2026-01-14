@@ -9,16 +9,42 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 /**
- * Calculate grade based on percentage
+ * Get grading scale for a school
+ * Returns school-specific scale or default scale
  */
-function calculateGrade(percentage) {
-  if (percentage >= 90) return 'A+';
-  if (percentage >= 80) return 'A';
-  if (percentage >= 70) return 'B+';
-  if (percentage >= 60) return 'B';
-  if (percentage >= 50) return 'C';
-  if (percentage >= 40) return 'D';
-  return 'F';
+async function getGradingScale(schoolId) {
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    select: { gradingScale: true }
+  });
+
+  // Return school-specific scale if configured
+  if (school?.gradingScale) {
+    return school.gradingScale;
+  }
+
+  // Default grading scale
+  return [
+    { grade: 'A+', minPercentage: 90, maxPercentage: 100 },
+    { grade: 'A', minPercentage: 80, maxPercentage: 89 },
+    { grade: 'B+', minPercentage: 70, maxPercentage: 79 },
+    { grade: 'B', minPercentage: 60, maxPercentage: 69 },
+    { grade: 'C', minPercentage: 50, maxPercentage: 59 },
+    { grade: 'D', minPercentage: 40, maxPercentage: 49 },
+    { grade: 'F', minPercentage: 0, maxPercentage: 39 }
+  ];
+}
+
+/**
+ * Calculate grade based on percentage and grading scale
+ */
+function calculateGrade(percentage, gradingScale) {
+  for (const scale of gradingScale) {
+    if (percentage >= scale.minPercentage && percentage <= scale.maxPercentage) {
+      return scale.grade;
+    }
+  }
+  return 'F'; // Default to F if no match
 }
 
 /**
@@ -127,7 +153,8 @@ router.post('/', validators.marksCreate, asyncHandler(async (req, res) => {
   }
 
   const percentage = (obtainedMarks / maxMarks) * 100;
-  const grade = calculateGrade(percentage);
+  const gradingScale = await getGradingScale(req.user.schoolId);
+  const grade = calculateGrade(percentage, gradingScale);
 
   const marksRecord = await prisma.marks.create({
     data: {
@@ -200,16 +227,38 @@ router.post('/bulk', [
     throw new AppError('Subject not found', 404);
   }
 
+  // Get grading scale for the school
+  const gradingScale = await getGradingScale(req.user.schoolId);
+
   const results = await prisma.$transaction(async (tx) => {
     const savedRecords = [];
+    const skippedRecords = [];
 
     for (const record of records) {
+      // Validate marks
       if (record.obtainedMarks > maxMarks) {
-        continue; // Skip invalid records
+        skippedRecords.push({
+          studentId: record.studentId,
+          reason: `Obtained marks (${record.obtainedMarks}) exceed maximum marks (${maxMarks})`
+        });
+        continue;
+      }
+
+      // Verify student exists and belongs to school
+      const student = await tx.student.findFirst({
+        where: { id: record.studentId, schoolId: req.user.schoolId }
+      });
+
+      if (!student) {
+        skippedRecords.push({
+          studentId: record.studentId,
+          reason: 'Student not found or does not belong to this school'
+        });
+        continue;
       }
 
       const percentage = (record.obtainedMarks / maxMarks) * 100;
-      const grade = calculateGrade(percentage);
+      const grade = calculateGrade(percentage, gradingScale);
 
       const marksRecord = await tx.marks.create({
         data: {
@@ -231,14 +280,27 @@ router.post('/bulk', [
       savedRecords.push(marksRecord);
     }
 
-    return savedRecords;
+    return { savedRecords, skippedRecords };
   });
 
-  res.status(201).json({
+  const response = {
     success: true,
-    message: 'Marks added successfully',
-    data: { count: results.length }
-  });
+    message: `Marks added successfully. ${results.savedRecords.length} records saved`,
+    data: {
+      saved: results.savedRecords.length,
+      skipped: results.skippedRecords.length,
+      total: records.length
+    }
+  };
+
+  // Include skipped records if any
+  if (results.skippedRecords.length > 0) {
+    response.message += `, ${results.skippedRecords.length} records skipped due to validation errors`;
+    response.data.skippedRecords = results.skippedRecords;
+    response.warning = 'Some records were skipped. Please review the skippedRecords array.';
+  }
+
+  res.status(results.skippedRecords.length > 0 ? 207 : 201).json(response);
 }));
 
 /**
@@ -286,7 +348,8 @@ router.put('/:id', [
   }
 
   const percentage = (newObtainedMarks / newMaxMarks) * 100;
-  const grade = calculateGrade(percentage);
+  const gradingScale = await getGradingScale(req.user.schoolId);
+  const grade = calculateGrade(percentage, gradingScale);
 
   const updated = await prisma.marks.update({
     where: { id },
@@ -362,11 +425,14 @@ router.get('/student/:studentId/report', [
     subjectWise[m.subjectId].totalMax += m.maxMarks;
   });
 
+  // Get grading scale
+  const gradingScale = await getGradingScale(req.user.schoolId);
+
   // Calculate overall
   const subjects = Object.values(subjectWise).map(s => ({
     ...s,
     percentage: s.totalMax > 0 ? (s.totalObtained / s.totalMax) * 100 : 0,
-    grade: s.totalMax > 0 ? calculateGrade((s.totalObtained / s.totalMax) * 100) : 'N/A'
+    grade: s.totalMax > 0 ? calculateGrade((s.totalObtained / s.totalMax) * 100, gradingScale) : 'N/A'
   }));
 
   const totalObtained = subjects.reduce((sum, s) => sum + s.totalObtained, 0);
@@ -386,7 +452,7 @@ router.get('/student/:studentId/report', [
         totalObtained,
         totalMax,
         percentage: totalMax > 0 ? (totalObtained / totalMax) * 100 : 0,
-        grade: totalMax > 0 ? calculateGrade((totalObtained / totalMax) * 100) : 'N/A'
+        grade: totalMax > 0 ? calculateGrade((totalObtained / totalMax) * 100, gradingScale) : 'N/A'
       }
     }
   });

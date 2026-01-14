@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
  * @desc    Get all users (teachers) in school
  * @access  Private (Principal only)
  */
-router.get('/', requireRole('PRINCIPAL'), asyncHandler(async (req, res) => {
+router.get('/', requireRole(['PRINCIPAL', 'TEACHER']), asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, role, isActive } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 

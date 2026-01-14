@@ -28,6 +28,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const aiRoutes = require('./routes/ai');
 const studentPortalRoutes = require('./routes/studentPortal');
 const studentQuizRoutes = require('./routes/studentQuiz');
+const faceRecognitionRoutes = require('./routes/faceRecognition');
 
 const app = express();
 
@@ -114,6 +115,7 @@ app.use(`${API_PREFIX}/chat`, authenticateToken, chatRoutes);
 app.use(`${API_PREFIX}/notifications`, authenticateToken, notificationRoutes);
 app.use(`${API_PREFIX}/dashboard`, authenticateToken, dashboardRoutes);
 app.use(`${API_PREFIX}/ai`, authenticateToken, aiRoutes);
+app.use(`${API_PREFIX}/face-recognition`, authenticateToken, faceRecognitionRoutes);
 
 // Student portal routes (separate authentication)
 app.use(`${API_PREFIX}/student`, authenticateStudentToken, studentPortalRoutes);
@@ -122,7 +124,7 @@ app.use(`${API_PREFIX}/student`, authenticateStudentToken, studentQuizRoutes);
 // Secure file access
 app.get('/uploads/schools/:schoolId/*', authenticateToken, (req, res, next) => {
   const { schoolId } = req.params;
-  
+
   // Verify user belongs to this school
   if (req.user.schoolId !== schoolId && req.user.role !== 'SUPER_ADMIN') {
     return res.status(403).json({
@@ -130,16 +132,16 @@ app.get('/uploads/schools/:schoolId/*', authenticateToken, (req, res, next) => {
       message: 'Access denied to this resource'
     });
   }
-  
+
   const filePath = path.join(uploadsDir, 'schools', schoolId, req.params[0]);
-  
+
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({
       success: false,
       message: 'File not found'
     });
   }
-  
+
   res.sendFile(path.resolve(filePath));
 });
 

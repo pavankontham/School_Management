@@ -65,6 +65,7 @@ router.post('/posts', requireRole('PRINCIPAL'), [
   body('title').trim().isLength({ min: 3, max: 200 }),
   body('content').trim().isLength({ min: 10, max: 10000 }),
   body('type').isIn(['UPDATE', 'EVENT', 'PROGRAM', 'ANNOUNCEMENT', 'ACHIEVEMENT']),
+  body('eventDate').optional().isISO8601(),
   body('isPinned').optional().isBoolean(),
   body('isPublished').optional().isBoolean()
 ], asyncHandler(async (req, res) => {
@@ -77,7 +78,7 @@ router.post('/posts', requireRole('PRINCIPAL'), [
     });
   }
 
-  const { title, content, type, isPinned, isPublished } = req.body;
+  const { title, content, type, eventDate, isPinned, isPublished } = req.body;
 
   const post = await prisma.dashboardPost.create({
     data: {
@@ -86,6 +87,7 @@ router.post('/posts', requireRole('PRINCIPAL'), [
       title,
       content,
       type,
+      eventDate: eventDate ? new Date(eventDate) : null,
       isPinned: isPinned || false,
       isPublished: isPublished !== false,
       publishedAt: isPublished !== false ? new Date() : null
@@ -216,7 +218,7 @@ router.put('/posts/:id', requireRole('PRINCIPAL'), [
       ...(content && { content }),
       ...(type && { type }),
       ...(isPinned !== undefined && { isPinned }),
-      ...(isPublished !== undefined && { 
+      ...(isPublished !== undefined && {
         isPublished,
         publishedAt: isPublished && !post.publishedAt ? new Date() : post.publishedAt
       })
@@ -280,7 +282,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     upcomingEvents
   ] = await Promise.all([
     prisma.student.count({ where: { schoolId, isActive: true } }),
-    prisma.user.count({ where: { schoolId, role: 'TEACHER', isActive: true } }),
+    prisma.user.count({ where: { schoolId, role: { in: ['TEACHER', 'PRINCIPAL'] }, isActive: true } }),
     prisma.class.count({ where: { schoolId, isActive: true } }),
     prisma.attendance.groupBy({
       by: ['status'],
@@ -298,11 +300,11 @@ router.get('/stats', asyncHandler(async (req, res) => {
         schoolId,
         isPublished: true,
         type: 'EVENT',
-        createdAt: { gte: today }
+        eventDate: { gte: today } // Events occurring today or in the future
       },
       take: 5,
-      orderBy: { createdAt: 'asc' },
-      select: { id: true, title: true, content: true, createdAt: true }
+      orderBy: { eventDate: 'asc' }, // Sort by event date, not creation date
+      select: { id: true, title: true, content: true, eventDate: true, createdAt: true }
     })
   ]);
 

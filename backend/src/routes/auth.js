@@ -118,7 +118,8 @@ router.post('/register-school', [
 
     // Store refresh token
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const refreshExpiryDays = parseInt(process.env.JWT_REFRESH_EXPIRES_IN?.replace('d', '')) || 7;
+    expiresAt.setDate(expiresAt.getDate() + refreshExpiryDays);
 
     await tx.refreshToken.create({
       data: {
@@ -221,7 +222,8 @@ router.post('/login', [
 
   // Store refresh token
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
+  const refreshExpiryDays = parseInt(process.env.JWT_REFRESH_EXPIRES_IN?.replace('d', '')) || 7;
+  expiresAt.setDate(expiresAt.getDate() + refreshExpiryDays);
 
   await prisma.refreshToken.create({
     data: {
@@ -326,6 +328,19 @@ router.post('/login-student', [
     type: 'student'
   });
 
+  // Store student refresh token
+  const expiresAt = new Date();
+  const refreshExpiryDays = parseInt(process.env.JWT_REFRESH_EXPIRES_IN?.replace('d', '')) || 7;
+  expiresAt.setDate(expiresAt.getDate() + refreshExpiryDays);
+
+  await prisma.studentRefreshToken.create({
+    data: {
+      studentId: student.id,
+      token: refreshToken,
+      expiresAt
+    }
+  });
+
   logger.info(`Student logged in: ${student.rollNumber} from school ${schoolId}`);
 
   res.json({
@@ -348,7 +363,7 @@ router.post('/login-student', [
 
 /**
  * @route   POST /api/v1/auth/refresh
- * @desc    Refresh access token
+ * @desc    Refresh access token (for both users and students)
  * @access  Public
  */
 router.post('/refresh', [
@@ -364,34 +379,114 @@ router.post('/refresh', [
     throw new AppError('Invalid refresh token', 401);
   }
 
-  // Check if token exists in database
-  const storedToken = await prisma.refreshToken.findUnique({
-    where: { token: refreshToken }
+  // Check if this is a student or user token
+  const isStudent = decoded.type === 'student' && decoded.studentId;
+
+  if (isStudent) {
+    // Handle student refresh token
+    const storedToken = await prisma.studentRefreshToken.findUnique({
+      where: { token: refreshToken }
+    });
+
+    if (!storedToken || storedToken.expiresAt < new Date()) {
+      if (storedToken) {
+        await prisma.studentRefreshToken.delete({ where: { id: storedToken.id } });
+      }
+      throw new AppError('Refresh token expired', 401);
+    }
+
+    // Generate new access token for student
+    const accessToken = generateAccessToken({
+      studentId: decoded.studentId,
+      schoolId: decoded.schoolId,
+      classId: decoded.classId,
+      type: 'student'
+    });
+
+    res.json({
+      success: true,
+      data: { accessToken }
+    });
+  } else {
+    // Handle user refresh token
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: { token: refreshToken }
+    });
+
+    if (!storedToken || storedToken.expiresAt < new Date()) {
+      if (storedToken) {
+        await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+      }
+      throw new AppError('Refresh token expired', 401);
+    }
+
+    // Fetch user to get current role
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { role: true }
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // Generate new access token for user
+    const accessToken = generateAccessToken({
+      userId: decoded.userId,
+      schoolId: decoded.schoolId,
+      role: user.role
+    });
+
+    res.json({
+      success: true,
+      data: { accessToken }
+    });
+  }
+}));
+
+/**
+ * @route   GET /api/v1/auth/school/:schoolId
+ * @desc    Get school information by ID (for student login)
+ * @access  Public
+ */
+router.get('/school/:schoolId', asyncHandler(async (req, res) => {
+  const { schoolId } = req.params;
+
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      city: true,
+      state: true,
+      country: true,
+      phone: true,
+      email: true,
+      website: true,
+      logo: true,
+      isActive: true,
+      createdAt: true
+    }
   });
 
-  if (!storedToken || storedToken.expiresAt < new Date()) {
-    if (storedToken) {
-      await prisma.refreshToken.delete({ where: { id: storedToken.id } });
-    }
-    throw new AppError('Refresh token expired', 401);
+  if (!school) {
+    throw new AppError('School not found', 404);
   }
 
-  // Generate new access token
-  const accessToken = generateAccessToken({
-    userId: decoded.userId,
-    schoolId: decoded.schoolId,
-    role: decoded.role
-  });
+  if (!school.isActive) {
+    throw new AppError('This school is currently inactive', 403);
+  }
 
   res.json({
     success: true,
-    data: { accessToken }
+    data: school
   });
 }));
 
 /**
  * @route   POST /api/v1/auth/logout
- * @desc    Logout user
+ * @desc    Logout user or student
  * @access  Public
  */
 router.post('/logout', [
@@ -399,14 +494,158 @@ router.post('/logout', [
 ], asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
 
-  // Delete refresh token
-  await prisma.refreshToken.deleteMany({
-    where: { token: refreshToken }
-  });
+  // Delete refresh token from both tables (only one will match)
+  await Promise.all([
+    prisma.refreshToken.deleteMany({
+      where: { token: refreshToken }
+    }),
+    prisma.studentRefreshToken.deleteMany({
+      where: { token: refreshToken }
+    })
+  ]);
 
   res.json({
     success: true,
     message: 'Logged out successfully'
+  });
+}));
+
+/**
+ * @route   POST /api/v1/auth/forgot-password
+ * @desc    Request password reset
+ * @access  Public
+ */
+router.post('/forgot-password', [
+  body('email').isEmail().normalizeEmail()
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Valid email is required',
+      errors: errors.array()
+    });
+  }
+
+  const { email } = req.body;
+
+  // Find user
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  // Always return success to prevent email enumeration
+  if (!user) {
+    return res.json({
+      success: true,
+      message: 'If an account exists with this email, a password reset link has been sent'
+    });
+  }
+
+  // Generate reset token (valid for 1 hour)
+  const resetToken = uuidv4();
+  const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+  // Store reset token in database
+  await prisma.passwordReset.create({
+    data: {
+      email: user.email,
+      token: resetToken,
+      expiresAt: resetTokenExpiry
+    }
+  });
+
+  // Send email with reset link
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+
+  const emailService = require('../services/emailService');
+  await emailService.sendPasswordResetEmail({
+    email: user.email,
+    resetToken,
+    resetUrl
+  });
+
+  logger.info(`Password reset requested for ${email}`);
+
+  res.json({
+    success: true,
+    message: 'If an account exists with this email, a password reset link has been sent',
+    // For development only - remove in production
+    resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+  });
+}));
+
+/**
+ * @route   POST /api/v1/auth/reset-password
+ * @desc    Reset password with token
+ * @access  Public
+ */
+router.post('/reset-password', [
+  body('token').notEmpty(),
+  body('newPassword').isLength({ min: 8 })
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+
+  const { token, newPassword } = req.body;
+
+  // Verify token exists and is not expired
+  const resetRecord = await prisma.passwordReset.findUnique({
+    where: { token }
+  });
+
+  if (!resetRecord) {
+    throw new AppError('Invalid or expired reset token', 400);
+  }
+
+  if (resetRecord.used) {
+    throw new AppError('This reset token has already been used', 400);
+  }
+
+  if (resetRecord.expiresAt < new Date()) {
+    throw new AppError('Reset token has expired', 400);
+  }
+
+  // Find user
+  const user = await prisma.user.findUnique({
+    where: { email: resetRecord.email }
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  // Update password and mark token as used in a transaction
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    }),
+    prisma.passwordReset.update({
+      where: { id: resetRecord.id },
+      data: { used: true }
+    })
+  ]);
+
+  // Delete all refresh tokens to force re-login
+  await prisma.refreshToken.deleteMany({
+    where: { userId: user.id }
+  });
+
+  logger.info(`Password reset successful for ${user.email}`);
+
+  res.json({
+    success: true,
+    message: 'Password reset successfully. You can now login with your new password.'
   });
 }));
 
