@@ -19,11 +19,42 @@ const transporter = nodemailer.createTransport({
  * @param {string} text - Plain text content
  * @param {string} html - HTML content (optional)
  * @param {string} from - Sender email (optional, defaults to school email)
+ * @param {string} schoolId - School ID to fetch school email (optional)
  */
-async function sendEmail({ to, subject, text, html, from }) {
+async function sendEmail({ to, subject, text, html, from, schoolId }) {
     try {
+        let senderEmail = from;
+
+        // If schoolId provided and no explicit 'from', fetch school email
+        if (!senderEmail && schoolId) {
+            try {
+                const { PrismaClient } = require('@prisma/client');
+                const prisma = new PrismaClient();
+
+                const school = await prisma.school.findUnique({
+                    where: { id: schoolId },
+                    select: { email: true, name: true }
+                });
+
+                if (school) {
+                    senderEmail = school.email;
+                    // You can also use school name in the sender
+                    // senderEmail = `"${school.name}" <${school.email}>`;
+                }
+
+                await prisma.$disconnect();
+            } catch (error) {
+                console.error('Error fetching school email:', error);
+            }
+        }
+
+        // Fallback to environment variable or default
+        if (!senderEmail) {
+            senderEmail = process.env.SCHOOL_EMAIL || process.env.BREVO_SMTP_USER || 'noreply@schoolmanagement.com';
+        }
+
         const mailOptions = {
-            from: from || process.env.SCHOOL_EMAIL || 'noreply@schoolmanagement.com',
+            from: senderEmail,
             to,
             subject,
             text,
@@ -41,8 +72,15 @@ async function sendEmail({ to, subject, text, html, from }) {
 
 /**
  * Send attendance notification email to parent
+ * @param {string} parentEmail - Parent's email
+ * @param {string} studentName - Student's name
+ * @param {string} date - Attendance date
+ * @param {string} status - Attendance status
+ * @param {string} teacherName - Teacher's name
+ * @param {string} teacherEmail - Teacher's email (for contact)
+ * @param {string} schoolId - School ID for dynamic sender email (optional)
  */
-async function sendAttendanceEmail({ parentEmail, studentName, date, status, teacherName, teacherEmail }) {
+async function sendAttendanceEmail({ parentEmail, studentName, date, status, teacherName, teacherEmail, schoolId }) {
     const subject = `Attendance Update - ${studentName}`;
 
     const text = `Dear Parent,
@@ -112,7 +150,7 @@ School Management System`;
         .footer {
             margin-top: 20px;
             padding-top: 20px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #ddd;
             font-size: 12px;
             color: #666;
         }
@@ -121,21 +159,16 @@ School Management System`;
 <body>
     <div class="container">
         <div class="header">
-            <h2>Attendance Update</h2>
+            <h2>Attendance Notification</h2>
         </div>
         <div class="content">
             <p>Dear Parent,</p>
-            <p>This is to inform you that the attendance for <strong>${studentName}</strong> has been updated.</p>
             
-            <div class="info-row">
-                <strong>Date:</strong> ${date}
-            </div>
-            <div class="info-row">
-                <strong>Status:</strong> <span class="status ${status.toLowerCase()}">${status}</span>
-            </div>
-            <div class="info-row">
-                <strong>Teacher:</strong> ${teacherName}
-            </div>
+            <p>This is to inform you that the attendance for <strong>${studentName}</strong> has been recorded.</p>
+            
+            <p><strong>Date:</strong> ${date}</p>
+            <p><strong>Status:</strong> <span class="status ${status.toLowerCase()}">${status}</span></p>
+            <p><strong>Teacher:</strong> ${teacherName}</p>
             
             <p style="margin-top: 20px;">If you have any questions, please contact ${teacherName} at <a href="mailto:${teacherEmail}">${teacherEmail}</a>.</p>
             
@@ -152,14 +185,18 @@ School Management System`;
         subject,
         text,
         html,
-        from: teacherEmail
+        schoolId // Use school's email as sender instead of teacher's
     });
 }
 
 /**
  * Send password reset email
+ * @param {string} email - Recipient email
+ * @param {string} resetToken - Reset token
+ * @param {string} resetUrl - Reset URL
+ * @param {string} schoolId - School ID for dynamic sender email (optional)
  */
-async function sendPasswordResetEmail({ email, resetToken, resetUrl }) {
+async function sendPasswordResetEmail({ email, resetToken, resetUrl, schoolId }) {
     const subject = 'Password Reset Request';
 
     const text = `You have requested to reset your password.
@@ -214,7 +251,13 @@ School Management System`;
 </body>
 </html>`;
 
-    return sendEmail({ to: email, subject, text, html });
+    return sendEmail({
+        to: email,
+        subject,
+        text,
+        html,
+        schoolId // Pass schoolId to use school's email as sender
+    });
 }
 
 module.exports = {

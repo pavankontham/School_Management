@@ -558,11 +558,13 @@ router.post('/forgot-password', [
   // Send email with reset link
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
+
   const emailService = require('../services/emailService');
   await emailService.sendPasswordResetEmail({
     email: user.email,
     resetToken,
-    resetUrl
+    resetUrl,
+    schoolId: user.schoolId // Use school's email as sender
   });
 
   logger.info(`Password reset requested for ${email}`);
